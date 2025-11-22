@@ -169,40 +169,18 @@ public class OrderController {
     public ResponseEntity<List<Order>> getSellerOrders(Authentication authentication) {
         try {
             String email = authentication.getName();
-            System.out.println("Fetching seller orders for user: " + email);
+            System.out.println("=== Fetching seller orders ===");
+            System.out.println("User email: " + email);
+            System.out.println("Authorities: " + authentication.getAuthorities());
             
             User seller = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            System.out.println("Seller ID: " + seller.getId());
+            System.out.println("Seller NIC: " + seller.getNicNumber());
+            System.out.println("Seller roles from DB: " + seller.getRoles());
 
-            // Get all orders that contain products from this seller
-            List<Order> allOrders = orderRepository.findAll();
-            System.out.println("Total orders in database: " + allOrders.size());
-            
-            List<Order> sellerOrders = allOrders.stream()
-                    .filter(order -> {
-                        // Force load order items
-                        if (order.getOrderItems() != null) {
-                            int itemCount = order.getOrderItems().size(); // Force initialization
-                            System.out.println("Order " + order.getId() + " has " + itemCount + " items");
-                            
-                            boolean hasSellersProduct = order.getOrderItems().stream()
-                                    .anyMatch(item -> {
-                                        if (item.getProduct() != null && item.getProduct().getUser() != null) {
-                                            boolean matches = item.getProduct().getUser().getId().equals(seller.getId());
-                                            if (matches) {
-                                                System.out.println("  - Found seller's product in order " + order.getId());
-                                            }
-                                            return matches;
-                                        }
-                                        return false;
-                                    });
-                            return hasSellersProduct;
-                        }
-                        return false;
-                    })
-                    .toList();
+            // Use repository method to find orders by seller NIC
+            List<Order> sellerOrders = orderRepository.findOrdersBySellerNic(seller.getNicNumber());
             
             System.out.println("Found " + sellerOrders.size() + " orders for seller " + email);
             
@@ -228,14 +206,11 @@ public class OrderController {
 
             Order.OrderStatus orderStatus = Order.OrderStatus.valueOf(status);
             
-            List<Order> allOrders = orderRepository.findByOrderStatus(orderStatus);
-            List<Order> sellerOrders = allOrders.stream()
-                    .filter(order -> order.getOrderItems() != null && 
-                            order.getOrderItems().stream()
-                                    .anyMatch(item -> item.getProduct() != null && 
-                                            item.getProduct().getUser() != null &&
-                                            item.getProduct().getUser().getId().equals(seller.getId())))
-                    .toList();
+            // Use repository method with status filter
+            List<Order> sellerOrders = orderRepository.findOrdersBySellerNicAndOrderStatuses(
+                seller.getNicNumber(), 
+                List.of(orderStatus)
+            );
             
             return ResponseEntity.ok(sellerOrders);
         } catch (Exception e) {
@@ -260,11 +235,10 @@ public class OrderController {
             Order order = orderRepository.findById(orderId)
                     .orElseThrow(() -> new RuntimeException("Order not found"));
 
-            // Verify this order contains products from this seller
-            boolean isSellerOrder = order.getOrderItems().stream()
-                    .anyMatch(item -> item.getProduct() != null && 
-                            item.getProduct().getUser() != null &&
-                            item.getProduct().getUser().getId().equals(seller.getId()));
+            // Verify this order contains products from this seller by checking if it's in their orders
+            List<Order> sellerOrders = orderRepository.findOrdersBySellerNic(seller.getNicNumber());
+            boolean isSellerOrder = sellerOrders.stream()
+                    .anyMatch(o -> o.getId().equals(orderId));
 
             if (!isSellerOrder) {
                 return ResponseEntity.status(403).build();
