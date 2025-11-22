@@ -37,7 +37,7 @@ public class IndustrialStuff {
     private String category;
     private String nicNumber;
     private Integer stock;
-    private Double price;
+    private double price;
     private Boolean inStock = true;
     private Integer soldCount = 0;
 

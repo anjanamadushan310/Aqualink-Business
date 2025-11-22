@@ -25,4 +25,11 @@ public class DeliveryRequestForFrontendDTO {
     private Integer totalItems;
     private String district;
     private String town;
+    
+    // Seller address information
+    private String sellerName;
+    private String sellerPhone;
+    private String sellerAddress;
+    private String sellerDistrict;
+    private String sellerTown;
 }

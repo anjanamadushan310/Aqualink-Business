@@ -23,6 +23,8 @@ import com.example.aqualink.entity.DeliveryPersonAvailability;
 import com.example.aqualink.entity.DeliveryPersonCoverage;
 import com.example.aqualink.entity.DeliveryQuote;
 import com.example.aqualink.entity.DeliveryQuoteRequest;
+import com.example.aqualink.entity.Fish;
+import com.example.aqualink.entity.IndustrialStuff;
 import com.example.aqualink.entity.Order;
 import com.example.aqualink.entity.OrderItem;
 import com.example.aqualink.entity.User;
@@ -31,6 +33,9 @@ import com.example.aqualink.repository.DeliveryPersonAvailabilityRepository;
 import com.example.aqualink.repository.DeliveryPersonCoverageRepository;
 import com.example.aqualink.repository.DeliveryQuoteRepository;
 import com.example.aqualink.repository.DeliveryQuoteRequestRepository;
+import com.example.aqualink.repository.FishRepository;
+import com.example.aqualink.repository.IndustrialStuffRepository;
+import com.example.aqualink.repository.OrderItemRepository;
 import com.example.aqualink.repository.OrderRepository;
 import com.example.aqualink.repository.UserProfileRepository;
 import com.example.aqualink.repository.UserRepository;
@@ -66,6 +71,38 @@ public class DeliveryQuoteService {
     private final DeliveryPersonCoverageRepository coverageRepository;  // Delivery person coverage areas
     private final DeliveryPersonAvailabilityRepository deliveryPersonAvailabilityRepository;  // Delivery person availability
     private final UserProfileRepository userProfileRepository;  // User profile information
+    private final OrderItemRepository orderItemRepository;  // Order item management
+    private final FishRepository fishRepository;  // Fish product repository
+    private final IndustrialStuffRepository industrialStuffRepository;  // Industrial product repository
+
+    /**
+     * Helper method to load product details into OrderItem transient fields
+     */
+    private void loadProductIntoOrderItem(OrderItem orderItem) {
+        if (orderItem.getProductId() == null || orderItem.getProductType() == null) {
+            return;
+        }
+        
+        if ("FISH".equalsIgnoreCase(orderItem.getProductType())) {
+            fishRepository.findById(orderItem.getProductId()).ifPresent(orderItem::setFishProduct);
+        } else if ("INDUSTRIAL".equalsIgnoreCase(orderItem.getProductType())) {
+            industrialStuffRepository.findById(orderItem.getProductId()).ifPresent(orderItem::setIndustrialProduct);
+        }
+    }
+    
+    /**
+     * Helper method to get seller User from OrderItem
+     */
+    private User getSellerFromOrderItem(OrderItem orderItem) {
+        loadProductIntoOrderItem(orderItem);
+        
+        if (orderItem.getFishProduct() != null) {
+            return orderItem.getFishProduct().getUser();
+        } else if (orderItem.getIndustrialProduct() != null) {
+            return orderItem.getIndustrialProduct().getUser();
+        }
+        return null;
+    }
 
     /**
      * Update existing order with delivery address (called when submit button is clicked)
@@ -130,6 +167,7 @@ public class DeliveryQuoteService {
     public DeliveryQuoteRequestDTO createQuoteRequestAndOrder(DeliveryQuoteRequestWithOrderDTO requestDTO, String customerEmail) {
         System.out.println("=== createQuoteRequestAndOrder START ===");
         System.out.println("Customer email: " + customerEmail);
+        System.out.println("Number of items in request: " + (requestDTO.getItems() != null ? requestDTO.getItems().size() : 0));
         
         User customer = userRepository.findByEmail(customerEmail)
                 .orElseThrow(() -> new RuntimeException("Customer not found"));
@@ -151,9 +189,72 @@ public class DeliveryQuoteService {
                 + ", " + requestDTO.getDeliveryAddress().getDistrict());
         }
         
-        // Save order to database
+        // Save order to database first to get the ID
         Order savedOrder = orderRepository.save(order);
         System.out.println("✓ Order saved to database with ID: " + savedOrder.getId());
+        
+        // Create and save order items from cart items
+        if (requestDTO.getItems() != null && !requestDTO.getItems().isEmpty()) {
+            System.out.println("Creating " + requestDTO.getItems().size() + " order items...");
+            
+            for (DeliveryQuoteRequestWithOrderDTO.CartItemDTO cartItem : requestDTO.getItems()) {
+                System.out.println("Processing cart item: " + cartItem.getProductName() 
+                    + ", type: " + cartItem.getProductType() 
+                    + ", cartItemId: " + cartItem.getCartItemId());
+                
+                // Find the product based on productType and store its ID
+                Long productId = null;
+                String productType = null;
+                
+                if (cartItem.getProductType() != null) {
+                    String type = cartItem.getProductType().toLowerCase();
+                    
+                    if (type.equals("fish")) {
+                        // Search for fish by name - this is not ideal but works as fallback
+                        List<Fish> fishes = fishRepository.findByNameContainingIgnoreCase(cartItem.getProductName());
+                        if (!fishes.isEmpty()) {
+                            productId = fishes.get(0).getId();
+                            productType = "FISH";
+                            System.out.println("Found fish product with ID: " + productId);
+                        } else {
+                            System.err.println("WARNING: Fish product not found for: " + cartItem.getProductName());
+                        }
+                    } else if (type.equals("industrial") || type.equals("industrialstuff")) {
+                        // Search for industrial stuff by name
+                        List<IndustrialStuff> industrialStuffs = industrialStuffRepository.findByNameContainingIgnoreCase(cartItem.getProductName());
+                        if (!industrialStuffs.isEmpty()) {
+                            productId = industrialStuffs.get(0).getId();
+                            productType = "INDUSTRIAL";
+                            System.out.println("Found industrial product with ID: " + productId);
+                        } else {
+                            System.err.println("WARNING: Industrial product not found for: " + cartItem.getProductName());
+                        }
+                    }
+                }
+                
+                if (productId != null) {
+                    // Create order item with product ID and type (not direct reference)
+                    OrderItem orderItem = new OrderItem();
+                    orderItem.setOrder(savedOrder);
+                    orderItem.setProductId(productId);
+                    orderItem.setProductType(productType);
+                    orderItem.setProductName(cartItem.getProductName());
+                    orderItem.setQuantity(cartItem.getQuantity());
+                    orderItem.setPrice(BigDecimal.valueOf(cartItem.getPrice()));
+                    
+                    // Save order item
+                    OrderItem savedOrderItem = orderItemRepository.save(orderItem);
+                    System.out.println("✓ OrderItem saved with ID: " + savedOrderItem.getOrderItemId() 
+                        + " for product: " + cartItem.getProductName());
+                } else {
+                    System.err.println("ERROR: Could not create order item - product not found for: " + cartItem.getProductName());
+                }
+            }
+            
+            System.out.println("✓ All order items processed");
+        } else {
+            System.out.println("WARNING: No items in request - order created without order items!");
+        }
         
         // Create delivery quote request
         DeliveryQuoteRequest quoteRequest = new DeliveryQuoteRequest();
@@ -192,19 +293,133 @@ public class DeliveryQuoteService {
 
     /**
      * Get available delivery requests for a specific delivery person (using Orders table)
+     * Filters based on coverage area and availability
      */
     public List<DeliveryRequestForFrontendDTO> getAvailableQuoteRequestsForDeliveryPerson(String deliveryPersonEmail) {
-        System.out.println("Fetching orders for delivery person: " + deliveryPersonEmail);
+        System.out.println("=== FETCHING DELIVERY REQUESTS WITH COVERAGE AREA FILTERING ===");
+        System.out.println("Delivery person email: " + deliveryPersonEmail);
+
+        // Get delivery person user
+        User deliveryPerson = userRepository.findByEmail(deliveryPersonEmail)
+                .orElseThrow(() -> new RuntimeException("Delivery person not found"));
+        
+        System.out.println("Delivery person ID: " + deliveryPerson.getId());
+        System.out.println("Delivery person NIC: " + deliveryPerson.getNicNumber());
+
+        // Check if delivery person is available
+        Optional<DeliveryPersonAvailability> availabilityOpt = 
+            deliveryPersonAvailabilityRepository.findByDeliveryPersonUser(deliveryPerson);
+        
+        if (availabilityOpt.isPresent() && !availabilityOpt.get().getIsAvailable()) {
+            System.out.println("Delivery person is marked as unavailable - returning empty list");
+            return new ArrayList<>();
+        }
+
+        // Get delivery person's coverage areas (towns they can deliver to)
+        List<DeliveryPersonCoverage> coverageList = 
+            coverageRepository.findByDeliveryPersonUser(deliveryPerson);
+        
+        // Extract all towns from coverage list (parse "District:Town" format)
+        Set<String> coverageTowns = new HashSet<>();
+        for (DeliveryPersonCoverage coverage : coverageList) {
+            List<String> towns = coverage.getTowns();
+            if (towns != null && !towns.isEmpty()) {
+                for (String townEntry : towns) {
+                    if (townEntry != null && !townEntry.trim().isEmpty()) {
+                        // Parse "District:Town" format to extract just the town name
+                        String townName;
+                        if (townEntry.contains(":")) {
+                            // Format is "District:Town", extract town part
+                            String[] parts = townEntry.split(":", 2);
+                            townName = parts.length > 1 ? parts[1].trim() : townEntry.trim();
+                        } else {
+                            // No colon, use as-is
+                            townName = townEntry.trim();
+                        }
+                        // Normalize to lowercase for case-insensitive comparison
+                        coverageTowns.add(townName.toLowerCase());
+                    }
+                }
+            }
+        }
+        
+        System.out.println("Coverage towns for delivery person: " + coverageTowns);
+        System.out.println("Total coverage towns: " + coverageTowns.size());
+        
+        // Print first 10 coverage towns for debugging
+        if (!coverageTowns.isEmpty()) {
+            System.out.println("Sample coverage towns: " + coverageTowns.stream().limit(10).collect(Collectors.toList()));
+        }
 
         // Get all orders with DELIVERY_PENDING status (waiting for delivery quotes)
         List<Order> pendingOrders = orderRepository.findByOrderStatus(Order.OrderStatus.DELIVERY_PENDING);
         
         System.out.println("Found " + pendingOrders.size() + " orders with DELIVERY_PENDING status");
 
-        // Convert orders to DeliveryRequestForFrontendDTO
-        return pendingOrders.stream()
+        // Filter orders by coverage area and convert to DTOs
+        List<DeliveryRequestForFrontendDTO> filteredRequests = pendingOrders.stream()
+                .filter(order -> {
+                    // If no coverage areas defined, show all requests (backward compatibility)
+                    if (coverageTowns.isEmpty()) {
+                        System.out.println("No coverage areas defined - showing order " + order.getId());
+                        return true;
+                    }
+                    
+                    // Check customer delivery address town
+                    String customerTown = order.getAddressTown();
+                    boolean customerTownMatches = false;
+                    if (customerTown != null && !customerTown.trim().isEmpty()) {
+                        String normalizedCustomerTown = customerTown.trim().toLowerCase();
+                        customerTownMatches = coverageTowns.contains(normalizedCustomerTown);
+                        System.out.println("Order " + order.getId() + " - Customer Town: '" + customerTown + 
+                                         "' - Matches: " + customerTownMatches);
+                    }
+                    
+                    // Check seller address town (all items in one order are from the same seller)
+                    boolean sellerTownMatches = false;
+                    String sellerTownRaw = null;
+                    if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+                        // Get the first item to find the seller (all items have the same seller)
+                        OrderItem firstItem = order.getOrderItems().get(0);
+                        User seller = getSellerFromOrderItem(firstItem);
+                        if (seller != null) {
+                            System.out.println("Order " + order.getId() + " - Seller: " + seller.getEmail());
+                            if (seller.getUserProfile() != null) {
+                                sellerTownRaw = seller.getUserProfile().getAddressTown();
+                                if (sellerTownRaw != null && !sellerTownRaw.trim().isEmpty()) {
+                                    String normalizedSellerTown = sellerTownRaw.trim().toLowerCase();
+                                    sellerTownMatches = coverageTowns.contains(normalizedSellerTown);
+                                    System.out.println("Order " + order.getId() + " - Seller Town: '" + sellerTownRaw + 
+                                                     "' (normalized: '" + normalizedSellerTown + "') - Matches: " + sellerTownMatches);
+                                } else {
+                                    System.out.println("Order " + order.getId() + " - Seller has no town in profile");
+                                }
+                            } else {
+                                System.out.println("Order " + order.getId() + " - Seller has no profile");
+                            }
+                        } else {
+                            System.out.println("Order " + order.getId() + " - No product or seller found in first item");
+                        }
+                    } else {
+                        System.out.println("Order " + order.getId() + " - No order items");
+                    }
+                    
+                    // Show order if EITHER customer town OR any seller town matches
+                    boolean matches = customerTownMatches || sellerTownMatches;
+                    
+                    if (!matches) {
+                        System.out.println("Order " + order.getId() + " - No matching towns - excluding");
+                    }
+                    
+                    return matches;
+                })
                 .map(this::convertOrderToDeliveryRequestDTO)
                 .collect(Collectors.toList());
+
+        System.out.println("After filtering by coverage area: " + filteredRequests.size() + " requests");
+        System.out.println("=============================================================");
+
+        return filteredRequests;
     }
     
     /**
@@ -238,7 +453,38 @@ public class DeliveryQuoteService {
         dto.setDeliveryAddress(deliveryAddress);
         dto.setDistrict(order.getAddressDistrict());
         dto.setTown(order.getAddressTown());
-        dto.setPickupAddress("Shop/Seller Location"); // TODO: Get from seller profile
+        
+        // Set seller info (from first order item since all items are from same seller)
+        if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+            OrderItem firstItem = order.getOrderItems().get(0);
+            User seller = getSellerFromOrderItem(firstItem);
+            if (seller != null) {
+                dto.setSellerName(seller.getName() != null ? seller.getName() : "Unknown Seller");
+                dto.setSellerPhone(seller.getPhoneNumber() != null ? seller.getPhoneNumber() : "N/A");
+                
+                // Get seller address from profile
+                if (seller.getUserProfile() != null) {
+                    UserProfile sellerProfile = seller.getUserProfile();
+                    String sellerAddress = String.format("%s, %s, %s, %s",
+                            sellerProfile.getAddressPlace() != null ? sellerProfile.getAddressPlace() : "",
+                            sellerProfile.getAddressStreet() != null ? sellerProfile.getAddressStreet() : "",
+                            sellerProfile.getAddressDistrict() != null ? sellerProfile.getAddressDistrict() : "",
+                            sellerProfile.getAddressTown() != null ? sellerProfile.getAddressTown() : "")
+                            .replaceAll(", ,", ",").replaceAll("^,|,$", "");
+                    
+                    dto.setSellerAddress(sellerAddress);
+                    dto.setSellerDistrict(sellerProfile.getAddressDistrict());
+                    dto.setSellerTown(sellerProfile.getAddressTown());
+                    dto.setPickupAddress(sellerAddress); // Use seller address as pickup address
+                } else {
+                    dto.setPickupAddress("Seller Location (Address not available)");
+                }
+            } else {
+                dto.setPickupAddress("Seller Location (Not found)");
+            }
+        } else {
+            dto.setPickupAddress("Seller Location (No items)");
+        }
         
         // Set customer info
         User customer = order.getBuyerUser();
@@ -645,8 +891,8 @@ public class DeliveryQuoteService {
                     try {
                         if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
                             OrderItem firstItem = order.getOrderItems().get(0);
-                            if (firstItem.getProduct() != null && firstItem.getProduct().getUser() != null) {
-                                User seller = firstItem.getProduct().getUser();
+                            User seller = getSellerFromOrderItem(firstItem);
+                            if (seller != null) {
                                 dto.setSellerId(seller.getId().toString());
                                 dto.setBusinessName(seller.getName()); // User has 'name' field, not firstName/lastName
                             }
@@ -669,7 +915,7 @@ public class DeliveryQuoteService {
                                             new DeliveryQuoteRequestWithOrderDTO.CartItemDTO();
                                         itemDto.setQuantity(item.getQuantity());
                                         itemDto.setPrice(item.getPrice() != null ? item.getPrice().doubleValue() : 0.0);
-                                        itemDto.setProductName(item.getProduct() != null ? item.getProduct().getName() : "Unknown Product");
+                                        itemDto.setProductName(item.getProductName() != null ? item.getProductName() : "Unknown Product");
                                         return itemDto;
                                     })
                                     .collect(Collectors.toList());

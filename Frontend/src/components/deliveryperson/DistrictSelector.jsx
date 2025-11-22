@@ -7,6 +7,13 @@ const DistrictSelector = ({ districts, coverageData, onUpdate }) => {
   const selectedDistricts = coverageData.selectedDistricts || [];
   const selectedTowns = coverageData.selectedTowns || {};
 
+  // Debug logging
+  React.useEffect(() => {
+    console.log('DistrictSelector - Coverage Data:', coverageData);
+    console.log('DistrictSelector - Selected Districts:', selectedDistricts);
+    console.log('DistrictSelector - Selected Towns:', selectedTowns);
+  }, [coverageData, selectedDistricts, selectedTowns]);
+
   const toggleDistrict = (district) => {
     const newSelectedDistricts = selectedDistricts.includes(district)
       ? selectedDistricts.filter(d => d !== district)
@@ -37,6 +44,21 @@ const DistrictSelector = ({ districts, coverageData, onUpdate }) => {
       newSelectedTowns[district] = newSelectedTowns[district].filter(t => t !== town);
     } else {
       newSelectedTowns[district] = [...newSelectedTowns[district], town];
+    }
+
+    onUpdate({ selectedTowns: newSelectedTowns });
+  };
+
+  const selectAllTowns = (district, towns) => {
+    const newSelectedTowns = { ...selectedTowns };
+    const allTownsSelected = newSelectedTowns[district]?.length === towns.length;
+
+    if (allTownsSelected) {
+      // Deselect all towns
+      newSelectedTowns[district] = [];
+    } else {
+      // Select all towns
+      newSelectedTowns[district] = [...towns];
     }
 
     onUpdate({ selectedTowns: newSelectedTowns });
@@ -91,8 +113,22 @@ const DistrictSelector = ({ districts, coverageData, onUpdate }) => {
                       {district}
                     </label>
                   </div>
-                  <div className="text-sm text-gray-600">
-                    {selectedTowns[district]?.length || 0} / {towns.length} towns selected
+                  <div className="flex items-center space-x-3">
+                    <div className="text-sm text-gray-600">
+                      {selectedTowns[district]?.length || 0} / {towns.length} towns selected
+                    </div>
+                    {selectedDistricts.includes(district) && (
+                      <button
+                        onClick={() => selectAllTowns(district, towns)}
+                        className={`px-3 py-1 text-xs font-medium rounded-md transition duration-200 ${
+                          selectedTowns[district]?.length === towns.length
+                            ? 'bg-orange-100 text-orange-700 hover:bg-orange-200 border border-orange-300'
+                            : 'bg-blue-100 text-blue-700 hover:bg-blue-200 border border-blue-300'
+                        }`}
+                      >
+                        {selectedTowns[district]?.length === towns.length ? 'Deselect All' : 'Select All'}
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

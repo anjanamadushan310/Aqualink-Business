@@ -5,7 +5,9 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -162,6 +164,8 @@ public class OrderController {
      * Get all orders for farm owner (seller) - orders containing their products
      */
     @GetMapping("/seller-orders")
+    @PreAuthorize("hasRole('FARM_OWNER') or hasRole('SHOP_OWNER') or hasRole('INDUSTRIAL_STUFF_SELLER') or hasRole('SERVICE_PROVIDER')")
+    @Transactional
     public ResponseEntity<List<Order>> getSellerOrders(Authentication authentication) {
         try {
             String email = authentication.getName();
@@ -170,14 +174,34 @@ public class OrderController {
             User seller = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
+            System.out.println("Seller ID: " + seller.getId());
+
             // Get all orders that contain products from this seller
             List<Order> allOrders = orderRepository.findAll();
+            System.out.println("Total orders in database: " + allOrders.size());
+            
             List<Order> sellerOrders = allOrders.stream()
-                    .filter(order -> order.getOrderItems() != null && 
-                            order.getOrderItems().stream()
-                                    .anyMatch(item -> item.getProduct() != null && 
-                                            item.getProduct().getUser() != null &&
-                                            item.getProduct().getUser().getId().equals(seller.getId())))
+                    .filter(order -> {
+                        // Force load order items
+                        if (order.getOrderItems() != null) {
+                            int itemCount = order.getOrderItems().size(); // Force initialization
+                            System.out.println("Order " + order.getId() + " has " + itemCount + " items");
+                            
+                            boolean hasSellersProduct = order.getOrderItems().stream()
+                                    .anyMatch(item -> {
+                                        if (item.getProduct() != null && item.getProduct().getUser() != null) {
+                                            boolean matches = item.getProduct().getUser().getId().equals(seller.getId());
+                                            if (matches) {
+                                                System.out.println("  - Found seller's product in order " + order.getId());
+                                            }
+                                            return matches;
+                                        }
+                                        return false;
+                                    });
+                            return hasSellersProduct;
+                        }
+                        return false;
+                    })
                     .toList();
             
             System.out.println("Found " + sellerOrders.size() + " orders for seller " + email);

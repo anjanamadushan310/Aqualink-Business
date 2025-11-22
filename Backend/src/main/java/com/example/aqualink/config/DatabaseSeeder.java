@@ -11,8 +11,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.ArrayList;
 
 @Configuration
 @RequiredArgsConstructor
@@ -28,7 +32,12 @@ public class DatabaseSeeder {
     private final BlogPostRepository blogPostRepository;
     private final BlogCommentRepository blogCommentRepository;
     private final DeliveryPersonCoverageRepository deliveryPersonCoverageRepository;
+    private final DeliveryPersonAvailabilityRepository deliveryPersonAvailabilityRepository;
     private final BannerRepository bannerRepository;
+    private final OrderRepository orderRepository;
+    private final OrderItemRepository orderItemRepository;
+    private final DeliveryQuoteRequestRepository deliveryQuoteRequestRepository;
+    private final DeliveryQuoteRepository deliveryQuoteRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Bean
@@ -49,6 +58,9 @@ public class DatabaseSeeder {
             } else {
                 log.info("ℹ️ Database already seeded, skipping...");
             }
+            
+            // Seed orders independently (has its own check)
+            seedOrders();
         };
     }
 
@@ -559,34 +571,451 @@ public class DatabaseSeeder {
         User dinesh = userRepository.findByEmail("dinesh@delivery.com").orElse(null);
         User ruwan = userRepository.findByEmail("ruwan@delivery.com").orElse(null);
         
+        // Set all delivery persons as available
         if (kasun != null) {
-            createCoverage(kasun, "Colombo", "Colombo 01-15", 50.00);
-            createCoverage(kasun, "Colombo", "Dehiwala", 50.00);
-            createCoverage(kasun, "Colombo", "Mount Lavinia", 50.00);
-            createCoverage(kasun, "Colombo", "Nugegoda", 50.00);
+            setAvailability(kasun, true);
+            createCoverage(kasun, getAllWesternProvinceTowns());
         }
         
         if (dinesh != null) {
-            createCoverage(dinesh, "Gampaha", "Gampaha", 45.00);
-            createCoverage(dinesh, "Gampaha", "Negombo", 45.00);
-            createCoverage(dinesh, "Gampaha", "Wattala", 45.00);
-            createCoverage(dinesh, "Gampaha", "Kadawatha", 45.00);
+            setAvailability(dinesh, true);
+            // Dinesh gets ALL towns in Sri Lanka
+            createCoverage(dinesh, getAllSriLankaTowns());
         }
         
         if (ruwan != null) {
-            createCoverage(ruwan, "Kalutara", "Kalutara", 40.00);
-            createCoverage(ruwan, "Kalutara", "Panadura", 40.00);
-            createCoverage(ruwan, "Kalutara", "Horana", 40.00);
+            setAvailability(ruwan, true);
+            createCoverage(ruwan, getAllSouthernProvinceTowns());
         }
         
         log.info("✅ Created delivery coverage areas");
     }
 
-    private void createCoverage(User user, String district, String city, double chargePerKm) {
-        DeliveryPersonCoverage coverage = new DeliveryPersonCoverage();
-        coverage.setDeliveryPersonUser(user);
-        coverage.setTowns(List.of(city)); // Using helper method to set towns
+    private void setAvailability(User user, boolean isAvailable) {
+        DeliveryPersonAvailability availability = deliveryPersonAvailabilityRepository
+                .findByDeliveryPersonUser(user)
+                .orElse(new DeliveryPersonAvailability());
+        
+        availability.setDeliveryPersonUser(user);
+        availability.setIsAvailable(isAvailable);
+        availability.setLastUpdated(LocalDateTime.now());
+        deliveryPersonAvailabilityRepository.save(availability);
+    }
+
+    private void createCoverage(User user, List<String> towns) {
+        // Find existing coverage or create new - returns List, so handle accordingly
+        List<DeliveryPersonCoverage> existingCoverages = deliveryPersonCoverageRepository
+                .findByDeliveryPersonUser(user);
+        
+        DeliveryPersonCoverage coverage;
+        if (!existingCoverages.isEmpty()) {
+            coverage = existingCoverages.get(0);
+        } else {
+            coverage = new DeliveryPersonCoverage();
+            coverage.setDeliveryPersonUser(user);
+        }
+        
+        // Convert raw town names to "District:Town" format
+        List<String> formattedTowns = formatTownsWithDistricts(towns);
+        coverage.setTowns(formattedTowns);
         deliveryPersonCoverageRepository.save(coverage);
+        
+        log.info("✅ Set coverage for {} with {} towns (formatted)", user.getEmail(), formattedTowns.size());
+    }
+    
+    /**
+     * Convert raw town names to "District:Town" format by matching towns to their districts
+     */
+    private List<String> formatTownsWithDistricts(List<String> towns) {
+        List<String> formattedTowns = new ArrayList<>();
+        
+        // Create a map of town -> district for fast lookup
+        Map<String, String> townToDistrict = new HashMap<>();
+        
+        // Populate the map with all district-town relationships
+        populateTownToDistrictMap(townToDistrict);
+        
+        // Format each town with its district
+        for (String town : towns) {
+            String district = townToDistrict.get(town);
+            if (district != null) {
+                formattedTowns.add(district + ":" + town);
+            } else {
+                // If district not found, try to infer or skip
+                log.warn("⚠️ Could not find district for town: {}", town);
+            }
+        }
+        
+        return formattedTowns;
+    }
+    
+    /**
+     * Populate a map of town names to their districts based on Sri Lankan geography
+     */
+    private void populateTownToDistrictMap(Map<String, String> map) {
+        // Ampara District
+        Arrays.asList("Ampara", "Akkaraipattu", "Kalmunai", "Sammanthurai", "Uhana", "Mahaoya", "Damana", "Lahugala",
+            "Addalachchenai", "Thirukkovil", "Pottuvil", "Arugam Bay", "Komari", "Navithanveli", "Padiyathalawa",
+            "Maha Oya", "Digamadulla", "Dehiattakandiya", "Ampara Town", "Sainthamaruthu", "Nindavur",
+            "Kondavil", "Kiran", "Maharagama", "Rugam", "Panama", "Oluvil")
+            .forEach(town -> map.put(town, "Ampara"));
+        
+        // Anuradhapura District
+        Arrays.asList("Anuradhapura", "Kekirawa", "Thambuttegama", "Eppawala", "Galenbindunuwewa", "Mihintale", "Medawachchiya", "Rambewa",
+            "Tambuttegama", "Horowpothana", "Kahatagasdigiliya", "Rajanganaya", "Palugaswewa", "Galnewa", "Palagala",
+            "Tirappane", "Nochchiyagama", "Maradankadawala", "Talawa", "Ipalogama", "Nachchaduwa", "Kebithigollewa",
+            "Padaviya", "Galkadawala", "Bogahawewa", "Thirappane", "Habarana", "Iranmadu")
+            .forEach(town -> map.put(town, "Anuradhapura"));
+        
+        // Badulla District
+        Arrays.asList("Badulla", "Bandarawela", "Ella", "Haputale", "Welimada", "Mahiyanganaya", "Passara", "Hali Ela",
+            "Diyathalawa", "Demodara", "Kandapola", "Namunukula", "Soranathota", "Haputhale", "Idalgashinna",
+            "Ohiya", "Ambewela", "Poonagala", "Haldummulla", "Lunugala", "Rideegama", "Meegahakivula",
+            "Uva Paranagama", "Ella Gap", "Badulla Town", "Kinchigune", "Keppetipola", "Bellhuloya")
+            .forEach(town -> map.put(town, "Badulla"));
+        
+        // Batticaloa District
+        Arrays.asList("Batticaloa", "Kattankudy", "Eravur", "Valachchenai", "Chenkalady", "Oddamavadi", "Kaluwanchikudy",
+            "Kiran", "Manmunai North", "Manmunai South", "Manmunai Pattu", "Koralaipattu North", "Koralaipattu",
+            "Porativu Pattu", "Unnichchai", "Paddippalai", "Kalkudah", "Passikudah", "Kokkaddicholai",
+            "Araipattai", "Vellaveli", "Amirabad", "Navatkadu", "Kodukamam", "Mahiladithivu", "Kirimechchiya")
+            .forEach(town -> map.put(town, "Batticaloa"));
+        
+        // Colombo District
+        Arrays.asList("Colombo", "Sri Jayawardenepura Kotte", "Dehiwala-Mount Lavinia", "Moratuwa", "Kesbewa", "Maharagama", "Kotikawatta", "Mulleriyawa",
+            "Rajagiriya", "Battaramulla", "Kottawa", "Pannipitiya", "Homagama", "Padukka", "Hanwella", "Avissawella",
+            "Nugegoda", "Boralesgamuwa", "Piliyandala", "Kelaniya", "Wattala", "Ja-Ela", "Kandana", "Negombo",
+            "Katunayake", "Seeduwa", "Minuwangoda", "Gampaha", "Veyangoda", "Mirigama", "Kirindiwela", "Dompe",
+            "Kadawatha", "Ragama", "Kiribathgoda", "Delkanda", "Wellampitiya", "Kolonnawa", "Kotte", "Malabe",
+            "Athurugiriya", "Thalawathugoda", "Godagama", "Rathmalana", "Kalubowila", "Rawathawatte", "Dehiwala")
+            .forEach(town -> map.put(town, "Colombo"));
+        
+        // Galle District
+        Arrays.asList("Galle", "Hikkaduwa", "Ambalangoda", "Bentota", "Elpitiya", "Karapitiya", "Baddegama", "Yakkalamulla",
+            "Unawatuna", "Kosgoda", "Balapitiya", "Ahungalla", "Induruwa", "Aluthgama", "Beruwala", "Dodanduwa",
+            "Habaraduwa", "Talpe", "Weligama", "Mirissa", "Matara", "Kamburugamuwa", "Neluwa", "Nagoda",
+            "Pitigala", "Imaduwa", "Thawalama", "Wanduramba", "Akmeemana")
+            .forEach(town -> map.put(town, "Galle"));
+        
+        // Gampaha District
+        Arrays.asList("Gampaha", "Negombo", "Katunayake", "Wattala", "Kelaniya", "Peliyagoda", "Ja-Ela", "Kandana", "Minuwangoda", "Divulapitiya",
+            "Seeduwa", "Liyanagemulla", "Kochchikade", "Marawila", "Chilaw", "Nattandiya", "Dankotuwa", "Wennappuwa",
+            "Veyangoda", "Mirigama", "Kirindiwela", "Dompe", "Kadawatha", "Ragama", "Kiribathgoda", "Attanagalla",
+            "Biyagama", "Mahara", "Weliweriya", "Ganemulla", "Yakkala", "Nittambuwa", "Pugoda")
+            .forEach(town -> map.put(town, "Gampaha"));
+        
+        // Hambantota District
+        Arrays.asList("Hambantota", "Tangalle", "Tissamaharama", "Ambalantota", "Beliatta", "Weeraketiya", "Suriyawewa", "Kataragama",
+            "Mattala", "Kirinda", "Yala", "Bundala", "Sooriyawewa", "Lunugamvehera", "Ranna", "Rekawa",
+            "Palatupana", "Wirawila", "Angunukolapelessa", "Embilipitiya", "Middeniya", "Okewela", "Walasmulla",
+            "Ambalantota Town", "Nonagama", "Gonnoruwa", "Ridiyagama")
+            .forEach(town -> map.put(town, "Hambantota"));
+        
+        // Jaffna District
+        Arrays.asList("Jaffna", "Nallur", "Chavakachcheri", "Point Pedro", "Karainagar", "Velanai", "Kayts", "Delft",
+            "Kopay", "Kondavil", "Tellippalai", "Sandilipay", "Uduvil", "Manipay", "Atchuvely", "Ariyalai",
+            "Palaly", "Kankesanturai", "Valikamam", "Thenmaradchy", "Vadamaradchy", "Pachchilaipalli",
+            "Karaveddy", "Nelliady", "Chankanai", "Maruthankerny", "Puttur", "Thondaimanaru")
+            .forEach(town -> map.put(town, "Jaffna"));
+        
+        // Kalutara District
+        Arrays.asList("Kalutara", "Panadura", "Horana", "Beruwala", "Aluthgama", "Matugama", "Bandaragama", "Ingiriya",
+            "Wadduwa", "Payagala", "Maggona", "Bulathsinhala", "Palindanuwara", "Agalawatta", "Mathugama",
+            "Dharga Town", "Kalutara South", "Kalutara North", "Katukurunda", "Waskaduwa", "Bentota",
+            "Kosgama", "Millewa", "Dodangoda", "Welegoda")
+            .forEach(town -> map.put(town, "Kalutara"));
+        
+        // Kandy District
+        Arrays.asList("Kandy", "Gampola", "Nawalapitiya", "Wattegama", "Kadugannawa", "Peradeniya", "Katugastota", "Akurana",
+            "Digana", "Teldeniya", "Kundasale", "Deltota", "Harispattuwa", "Hataraliyadda", "Medadumbara",
+            "Panvila", "Pasbage", "Pathadumbara", "Patha Hewaheta", "Pilimathalawa", "Poojapitiya", "Tumpane",
+            "Udadumbara", "Udapalatha", "Udunuwara", "Yatinuwara", "Doluwa", "Gangawata Korale")
+            .forEach(town -> map.put(town, "Kandy"));
+        
+        // Kegalle District
+        Arrays.asList("Kegalle", "Mawanella", "Warakapola", "Rambukkana", "Galigamuwa", "Yatiyantota", "Dehiowita", "Ruwanwella",
+            "Kitulgala", "Aranayaka", "Bulathkohupitiya", "Deraniyagala", "Kuruppuarachchi", "Polgampola",
+            "Ruwanwella Town", "Kegalle Town", "Avissawella", "Ratnapura", "Pelmadulla")
+            .forEach(town -> map.put(town, "Kegalle"));
+        
+        // Kilinochchi District
+        Arrays.asList("Kilinochchi", "Paranthan", "Poonakary", "Pallai", "Kandavalai",
+            "Akkarayankulam", "Paranthan Junction", "Elephant Pass", "Muhamalai", "Vishvamadu",
+            "Kilinochchi Town", "Uruthirapuram", "Karachchi", "Pachchilaipalli")
+            .forEach(town -> map.put(town, "Kilinochchi"));
+        
+        // Kurunegala District
+        Arrays.asList("Kurunegala", "Kuliyapitiya", "Narammala", "Wariyapola", "Pannala", "Melsiripura", "Giriulla", "Polgahawela",
+            "Alawwa", "Bingiriya", "Bamunakotuwa", "Ganewatta", "Hettipola", "Ibbagamuwa", "Kobeigane",
+            "Maho", "Nikaweratiya", "Panduwasnuwara", "Polpithigama", "Rideegama", "Udubaddawa", "Weerambugedara",
+            "Maspotha", "Ambanpola", "Bowatenna", "Ehetuwewa", "Galagedera")
+            .forEach(town -> map.put(town, "Kurunegala"));
+        
+        // Mannar District
+        Arrays.asList("Mannar", "Murunkan", "Madhu", "Nanattan", "Pesalai",
+            "Mannar Island", "Talaimannar", "Erukkalampiddy", "Adampan", "Vidattaltivu",
+            "Nanaddan", "Silavathurai", "Manthai West", "Musali", "Mannar Town")
+            .forEach(town -> map.put(town, "Mannar"));
+        
+        // Matale District
+        Arrays.asList("Matale", "Dambulla", "Sigiriya", "Galewela", "Ukuwela", "Rattota", "Pallepola", "Nalanda",
+            "Laggala", "Wilgamuwa", "Yatawatta", "Ambanganga Korale", "Laggala-Pallegama", "Matale Four Gravets",
+            "Kekirawa", "Habarana", "Matale Town", "Aluvihare", "Palapathwela", "Knuckles Range",
+            "Riverston", "Illukkumbura", "Elkaduwa")
+            .forEach(town -> map.put(town, "Matale"));
+        
+        // Matara District
+        Arrays.asList("Matara", "Weligama", "Mirissa", "Dikwella", "Hakmana", "Akuressa", "Devinuwara", "Kotapola",
+            "Kamburugamuwa", "Thihagoda", "Malimbada", "Pitabeddara", "Kirinda", "Matara Four Gravets",
+            "Gandara", "Pasgoda", "Kekanadura", "Matara Town", "Dondra", "Polhena", "Nilwala",
+            "Madiha", "Kokawala", "Kirinda Puhulwella")
+            .forEach(town -> map.put(town, "Matara"));
+        
+        // Monaragala District
+        Arrays.asList("Monaragala", "Wellawaya", "Kataragama", "Buttala", "Medagama", "Thanamalwila", "Bibila", "Badalkumbura",
+            "Siyambalanduwa", "Sevanagala", "Madulla", "Moneragala Town", "Bibile", "Okkampitiya", "Hurigaswewa",
+            "Dehiattakandiya", "Galabedda", "Kandaketiya", "Koombiyakanda", "Rotawewa", "Yakkalamulla")
+            .forEach(town -> map.put(town, "Monaragala"));
+        
+        // Mullaitivu District
+        Arrays.asList("Mullaitivu", "Oddusuddan", "Puthukudiyiruppu", "Manthai East", "Weli Oya",
+            "Thunukkai", "Puthukkudiyiruppu", "Mullaitivu Town", "Kokkilai", "Nayaru",
+            "Kokkuthoduvai", "Ampalavanpokkanai", "Oddusudan", "Maritimepattu", "Pudukudiyiruppu")
+            .forEach(town -> map.put(town, "Mullaitivu"));
+        
+        // Nuwara Eliya District
+        Arrays.asList("Nuwara Eliya", "Hatton", "Maskeliya", "Talawakele", "Ginigathhena", "Walapane", "Kotagala", "Dayagama",
+            "Bogawantalawa", "Lindula", "Agarapathana", "Hanguranketha", "Kotmale", "Ramboda", "Nanu Oya",
+            "Pussellawa", "Norton Bridge", "Watawala", "Dickoya", "Nawalapitiya", "Ragala", "Haggala",
+            "Labukele", "Pedro", "Kandapola", "Radella", "Rikillagaskada")
+            .forEach(town -> map.put(town, "Nuwara Eliya"));
+        
+        // Polonnaruwa District
+        Arrays.asList("Polonnaruwa", "Kaduruwela", "Medirigiriya", "Hingurakgoda", "Dimbulagala", "Lankapura", "Welikanda",
+            "Elahera", "Thamankaduwa", "Polonnaruwa New Town", "Polonnaruwa Ancient City", "Aralaganwila",
+            "Bakamuna", "Manampitiya", "Somawathiya", "Bendiyawewa", "Jayanthipura", "Giritale",
+            "Minneriya", "Habarana", "Sigiriya", "Kalyanapura")
+            .forEach(town -> map.put(town, "Polonnaruwa"));
+        
+        // Puttalam District
+        Arrays.asList("Puttalam", "Chilaw", "Nattandiya", "Wennappuwa", "Dankotuwa", "Marawila", "Anamaduwa", "Kalpitiya",
+            "Mundel", "Noraicholai", "Palavi", "Puttalam Lagoon", "Madampe", "Udappuwa", "Bangadeniya",
+            "Bolawatta", "Madhu Road", "Karuwalagaswewa", "Nawagattegama", "Mahawewa", "Eluvankulama",
+            "Wilpattu", "Kala Wewa", "Puttalam Town")
+            .forEach(town -> map.put(town, "Puttalam"));
+        
+        // Ratnapura District
+        Arrays.asList("Ratnapura", "Embilipitiya", "Balangoda", "Pelmadulla", "Eheliyagoda", "Kuruwita", "Godakawela", "Kalawana",
+            "Rakwana", "Nivitigala", "Kahawatta", "Weligepola", "Ayagama", "Imbulpe", "Kolonna", "Opanayaka",
+            "Palmadulla", "Ratnapura Town", "Kiriella", "Elapatha", "Palindanuwara", "Malimboda")
+            .forEach(town -> map.put(town, "Ratnapura"));
+        
+        // Trincomalee District
+        Arrays.asList("Trincomalee", "Kinniya", "Mutur", "Kantale", "China Bay", "Nilaveli", "Kuchchaveli",
+            "Gomarankadawala", "Morawewa", "Seruwila", "Padavi Siripura", "Thambalagamuwa", "Somawathiya",
+            "Trincomalee Town", "Fort Frederick", "Uppuveli", "Pigeon Island", "Marble Beach",
+            "Verugal", "Pulmoddai", "Kalkudah", "Muttur")
+            .forEach(town -> map.put(town, "Trincomalee"));
+        
+        // Vavuniya District
+        Arrays.asList("Vavuniya", "Cheddikulam", "Settikulam", "Nedunkeni", "Omanthai",
+            "Vavuniya South", "Vavuniya North", "Venkalacheddikulam", "Puliyankulama", "Kebitigollewa",
+            "Horowupotana", "Medawachchiya", "Vavuniya Town", "Thandikulam", "Nellikulama")
+            .forEach(town -> map.put(town, "Vavuniya"));
+    }
+
+    private List<String> getAllWesternProvinceTowns() {
+        return Arrays.asList(
+            // Colombo District
+            "Colombo", "Sri Jayawardenepura Kotte", "Dehiwala-Mount Lavinia", "Moratuwa", "Kesbewa", 
+            "Maharagama", "Kotikawatta", "Mulleriyawa", "Rajagiriya", "Battaramulla", "Kottawa", 
+            "Pannipitiya", "Homagama", "Padukka", "Hanwella", "Avissawella", "Nugegoda", 
+            "Boralesgamuwa", "Piliyandala", "Kelaniya", "Wattala", "Ja-Ela", "Kandana", "Negombo",
+            "Katunayake", "Seeduwa", "Kadawatha", "Ragama", "Kiribathgoda", "Kolonnawa", "Kotte", 
+            "Malabe", "Athurugiriya", "Thalawathugoda", "Godagama", "Rathmalana", "Kalubowila", 
+            "Rawathawatte",
+            // Gampaha District
+            "Gampaha", "Minuwangoda", "Divulapitiya", "Liyanagemulla", "Kochchikade", "Marawila", 
+            "Chilaw", "Nattandiya", "Dankotuwa", "Wennappuwa", "Veyangoda", "Mirigama", "Kirindiwela", 
+            "Dompe", "Attanagalla", "Biyagama", "Mahara", "Weliweriya", "Ganemulla", "Yakkala", 
+            "Nittambuwa", "Pugoda", "Peliyagoda",
+            // Kalutara District
+            "Kalutara", "Panadura", "Horana", "Beruwala", "Aluthgama", "Matugama", "Bandaragama", 
+            "Ingiriya", "Wadduwa", "Payagala", "Maggona", "Bulathsinhala", "Palindanuwara", 
+            "Agalawatta", "Mathugama", "Dharga Town", "Kalutara South", "Kalutara North", 
+            "Katukurunda", "Waskaduwa", "Bentota", "Kosgama", "Millewa", "Dodangoda", "Welegoda"
+        );
+    }
+
+    private List<String> getAllSouthernProvinceTowns() {
+        return Arrays.asList(
+            // Galle District
+            "Galle", "Hikkaduwa", "Ambalangoda", "Bentota", "Elpitiya", "Karapitiya", "Baddegama", 
+            "Yakkalamulla", "Unawatuna", "Kosgoda", "Balapitiya", "Ahungalla", "Induruwa", 
+            "Aluthgama", "Beruwala", "Dodanduwa", "Habaraduwa", "Talpe", "Weligama", "Mirissa", 
+            "Matara", "Kamburugamuwa", "Neluwa", "Nagoda", "Pitigala", "Imaduwa", "Thawalama", 
+            "Wanduramba", "Akmeemana",
+            // Matara District
+            "Matara", "Weligama", "Mirissa", "Dikwella", "Hakmana", "Akuressa", "Devinuwara", 
+            "Kotapola", "Kamburugamuwa", "Thihagoda", "Malimbada", "Pitabeddara", "Kirinda", 
+            "Matara Four Gravets", "Gandara", "Pasgoda", "Kekanadura", "Matara Town", "Dondra", 
+            "Polhena", "Nilwala", "Madiha", "Kokawala", "Kirinda Puhulwella",
+            // Hambantota District
+            "Hambantota", "Tangalle", "Tissamaharama", "Ambalantota", "Beliatta", "Weeraketiya", 
+            "Suriyawewa", "Kataragama", "Mattala", "Kirinda", "Yala", "Bundala", "Sooriyawewa", 
+            "Lunugamvehera", "Ranna", "Rekawa", "Palatupana", "Wirawila", "Angunukolapelessa", 
+            "Embilipitiya", "Middeniya", "Okewela", "Walasmulla", "Ambalantota Town", "Nonagama", 
+            "Gonnoruwa", "Ridiyagama"
+        );
+    }
+
+    private List<String> getAllSriLankaTowns() {
+        return Arrays.asList(
+            // Ampara District (27 towns)
+            "Ampara", "Akkaraipattu", "Kalmunai", "Sammanthurai", "Uhana", "Mahaoya", "Damana", "Lahugala",
+            "Addalachchenai", "Thirukkovil", "Pottuvil", "Arugam Bay", "Komari", "Navithanveli", "Padiyathalawa",
+            "Maha Oya", "Digamadulla", "Dehiattakandiya", "Ampara Town", "Sainthamaruthu", "Nindavur",
+            "Kondavil", "Kiran", "Maharagama", "Rugam", "Panama", "Oluvil",
+            
+            // Anuradhapura District (28 towns)
+            "Anuradhapura", "Kekirawa", "Thambuttegama", "Eppawala", "Galenbindunuwewa", "Mihintale", "Medawachchiya", "Rambewa",
+            "Tambuttegama", "Horowpothana", "Kahatagasdigiliya", "Rajanganaya", "Palugaswewa", "Galnewa", "Palagala",
+            "Tirappane", "Nochchiyagama", "Maradankadawala", "Talawa", "Ipalogama", "Nachchaduwa", "Kebithigollewa",
+            "Padaviya", "Galkadawala", "Bogahawewa", "Thirappane", "Habarana", "Iranmadu",
+            
+            // Badulla District (28 towns)
+            "Badulla", "Bandarawela", "Ella", "Haputale", "Welimada", "Mahiyanganaya", "Passara", "Hali Ela",
+            "Diyathalawa", "Demodara", "Kandapola", "Namunukula", "Soranathota", "Haputhale", "Idalgashinna",
+            "Ohiya", "Ambewela", "Poonagala", "Haldummulla", "Lunugala", "Rideegama", "Meegahakivula",
+            "Uva Paranagama", "Ella Gap", "Badulla Town", "Kinchigune", "Keppetipola", "Bellhuloya",
+            
+            // Batticaloa District (26 towns)
+            "Batticaloa", "Kattankudy", "Eravur", "Valachchenai", "Chenkalady", "Oddamavadi", "Kaluwanchikudy",
+            "Kiran", "Manmunai North", "Manmunai South", "Manmunai Pattu", "Koralaipattu North", "Koralaipattu",
+            "Porativu Pattu", "Unnichchai", "Paddippalai", "Kalkudah", "Passikudah", "Kokkaddicholai",
+            "Araipattai", "Vellaveli", "Amirabad", "Navatkadu", "Kodukamam", "Mahiladithivu", "Kirimechchiya",
+            
+            // Colombo District (47 towns)
+            "Colombo", "Sri Jayawardenepura Kotte", "Dehiwala-Mount Lavinia", "Moratuwa", "Kesbewa", "Maharagama", "Kotikawatta", "Mulleriyawa",
+            "Rajagiriya", "Battaramulla", "Kottawa", "Pannipitiya", "Homagama", "Padukka", "Hanwella", "Avissawella",
+            "Nugegoda", "Boralesgamuwa", "Piliyandala", "Kelaniya", "Wattala", "Ja-Ela", "Kandana", "Negombo",
+            "Katunayake", "Seeduwa", "Minuwangoda", "Gampaha", "Veyangoda", "Mirigama", "Kirindiwela", "Dompe",
+            "Kadawatha", "Ragama", "Kiribathgoda", "Delkanda", "Wellampitiya", "Kolonnawa", "Kotte", "Malabe",
+            "Athurugiriya", "Thalawathugoda", "Godagama", "Rathmalana", "Kalubowila", "Rawathawatte", "Dehiwala",
+            
+            // Galle District (29 towns)
+            "Galle", "Hikkaduwa", "Ambalangoda", "Bentota", "Elpitiya", "Karapitiya", "Baddegama", "Yakkalamulla",
+            "Unawatuna", "Kosgoda", "Balapitiya", "Ahungalla", "Induruwa", "Aluthgama", "Beruwala", "Dodanduwa",
+            "Habaraduwa", "Talpe", "Weligama", "Mirissa", "Matara", "Kamburugamuwa", "Neluwa", "Nagoda",
+            "Pitigala", "Imaduwa", "Thawalama", "Wanduramba", "Akmeemana",
+            
+            // Gampaha District (33 towns)
+            "Gampaha", "Negombo", "Katunayake", "Wattala", "Kelaniya", "Peliyagoda", "Ja-Ela", "Kandana", "Minuwangoda", "Divulapitiya",
+            "Seeduwa", "Liyanagemulla", "Kochchikade", "Marawila", "Chilaw", "Nattandiya", "Dankotuwa", "Wennappuwa",
+            "Veyangoda", "Mirigama", "Kirindiwela", "Dompe", "Kadawatha", "Ragama", "Kiribathgoda", "Attanagalla",
+            "Biyagama", "Mahara", "Weliweriya", "Ganemulla", "Yakkala", "Nittambuwa", "Pugoda",
+            
+            // Hambantota District (27 towns)
+            "Hambantota", "Tangalle", "Tissamaharama", "Ambalantota", "Beliatta", "Weeraketiya", "Suriyawewa", "Kataragama",
+            "Mattala", "Kirinda", "Yala", "Bundala", "Sooriyawewa", "Lunugamvehera", "Ranna", "Rekawa",
+            "Palatupana", "Wirawila", "Angunukolapelessa", "Embilipitiya", "Middeniya", "Okewela", "Walasmulla",
+            "Ambalantota Town", "Nonagama", "Gonnoruwa", "Ridiyagama",
+            
+            // Jaffna District (28 towns)
+            "Jaffna", "Nallur", "Chavakachcheri", "Point Pedro", "Karainagar", "Velanai", "Kayts", "Delft",
+            "Kopay", "Kondavil", "Tellippalai", "Sandilipay", "Uduvil", "Manipay", "Atchuvely", "Ariyalai",
+            "Palaly", "Kankesanturai", "Valikamam", "Thenmaradchy", "Vadamaradchy", "Pachchilaipalli",
+            "Karaveddy", "Nelliady", "Chankanai", "Maruthankerny", "Puttur", "Thondaimanaru",
+            
+            // Kalutara District (25 towns)
+            "Kalutara", "Panadura", "Horana", "Beruwala", "Aluthgama", "Matugama", "Bandaragama", "Ingiriya",
+            "Wadduwa", "Payagala", "Maggona", "Bulathsinhala", "Palindanuwara", "Agalawatta", "Mathugama",
+            "Dharga Town", "Kalutara South", "Kalutara North", "Katukurunda", "Waskaduwa", "Bentota",
+            "Kosgama", "Millewa", "Dodangoda", "Welegoda",
+            
+            // Kandy District (28 towns)
+            "Kandy", "Gampola", "Nawalapitiya", "Wattegama", "Kadugannawa", "Peradeniya", "Katugastota", "Akurana",
+            "Digana", "Teldeniya", "Kundasale", "Deltota", "Harispattuwa", "Hataraliyadda", "Medadumbara",
+            "Panvila", "Pasbage", "Pathadumbara", "Patha Hewaheta", "Pilimathalawa", "Poojapitiya", "Tumpane",
+            "Udadumbara", "Udapalatha", "Udunuwara", "Yatinuwara", "Doluwa", "Gangawata Korale",
+            
+            // Kegalle District (19 towns)
+            "Kegalle", "Mawanella", "Warakapola", "Rambukkana", "Galigamuwa", "Yatiyantota", "Dehiowita", "Ruwanwella",
+            "Kitulgala", "Aranayaka", "Bulathkohupitiya", "Deraniyagala", "Kuruppuarachchi", "Polgampola",
+            "Ruwanwella Town", "Kegalle Town", "Avissawella", "Ratnapura", "Pelmadulla",
+            
+            // Kilinochchi District (14 towns)
+            "Kilinochchi", "Paranthan", "Poonakary", "Pallai", "Kandavalai",
+            "Akkarayankulam", "Paranthan Junction", "Elephant Pass", "Muhamalai", "Vishvamadu",
+            "Kilinochchi Town", "Uruthirapuram", "Karachchi", "Pachchilaipalli",
+            
+            // Kurunegala District (27 towns)
+            "Kurunegala", "Kuliyapitiya", "Narammala", "Wariyapola", "Pannala", "Melsiripura", "Giriulla", "Polgahawela",
+            "Alawwa", "Bingiriya", "Bamunakotuwa", "Ganewatta", "Hettipola", "Ibbagamuwa", "Kobeigane",
+            "Maho", "Nikaweratiya", "Panduwasnuwara", "Polpithigama", "Rideegama", "Udubaddawa", "Weerambugedara",
+            "Maspotha", "Ambanpola", "Bowatenna", "Ehetuwewa", "Galagedera",
+            
+            // Mannar District (15 towns)
+            "Mannar", "Murunkan", "Madhu", "Nanattan", "Pesalai",
+            "Mannar Island", "Talaimannar", "Erukkalampiddy", "Adampan", "Vidattaltivu",
+            "Nanaddan", "Silavathurai", "Manthai West", "Musali", "Mannar Town",
+            
+            // Matale District (23 towns)
+            "Matale", "Dambulla", "Sigiriya", "Galewela", "Ukuwela", "Rattota", "Pallepola", "Nalanda",
+            "Laggala", "Wilgamuwa", "Yatawatta", "Ambanganga Korale", "Laggala-Pallegama", "Matale Four Gravets",
+            "Kekirawa", "Habarana", "Matale Town", "Aluvihare", "Palapathwela", "Knuckles Range",
+            "Riverston", "Illukkumbura", "Elkaduwa",
+            
+            // Matara District (24 towns)
+            "Matara", "Weligama", "Mirissa", "Dikwella", "Hakmana", "Akuressa", "Devinuwara", "Kotapola",
+            "Kamburugamuwa", "Thihagoda", "Malimbada", "Pitabeddara", "Kirinda", "Matara Four Gravets",
+            "Gandara", "Pasgoda", "Kekanadura", "Matara Town", "Dondra", "Polhena", "Nilwala",
+            "Madiha", "Kokawala", "Kirinda Puhulwella",
+            
+            // Monaragala District (21 towns)
+            "Monaragala", "Wellawaya", "Kataragama", "Buttala", "Medagama", "Thanamalwila", "Bibila", "Badalkumbura",
+            "Siyambalanduwa", "Sevanagala", "Madulla", "Moneragala Town", "Bibile", "Okkampitiya", "Hurigaswewa",
+            "Dehiattakandiya", "Galabedda", "Kandaketiya", "Koombiyakanda", "Rotawewa", "Yakkalamulla",
+            
+            // Mullaitivu District (15 towns)
+            "Mullaitivu", "Oddusuddan", "Puthukudiyiruppu", "Manthai East", "Weli Oya",
+            "Thunukkai", "Puthukkudiyiruppu", "Mullaitivu Town", "Kokkilai", "Nayaru",
+            "Kokkuthoduvai", "Ampalavanpokkanai", "Oddusudan", "Maritimepattu", "Pudukudiyiruppu",
+            
+            // Nuwara Eliya District (27 towns)
+            "Nuwara Eliya", "Hatton", "Maskeliya", "Talawakele", "Ginigathhena", "Walapane", "Kotagala", "Dayagama",
+            "Bogawantalawa", "Lindula", "Agarapathana", "Hanguranketha", "Kotmale", "Ramboda", "Nanu Oya",
+            "Pussellawa", "Norton Bridge", "Watawala", "Dickoya", "Nawalapitiya", "Ragala", "Haggala",
+            "Labukele", "Pedro", "Kandapola", "Radella", "Rikillagaskada",
+            
+            // Polonnaruwa District (22 towns)
+            "Polonnaruwa", "Kaduruwela", "Medirigiriya", "Hingurakgoda", "Dimbulagala", "Lankapura", "Welikanda",
+            "Elahera", "Thamankaduwa", "Polonnaruwa New Town", "Polonnaruwa Ancient City", "Aralaganwila",
+            "Bakamuna", "Manampitiya", "Somawathiya", "Bendiyawewa", "Jayanthipura", "Giritale",
+            "Minneriya", "Habarana", "Sigiriya", "Kalyanapura",
+            
+            // Puttalam District (24 towns)
+            "Puttalam", "Chilaw", "Nattandiya", "Wennappuwa", "Dankotuwa", "Marawila", "Anamaduwa", "Kalpitiya",
+            "Mundel", "Noraicholai", "Palavi", "Puttalam Lagoon", "Madampe", "Udappuwa", "Bangadeniya",
+            "Bolawatta", "Madhu Road", "Karuwalagaswewa", "Nawagattegama", "Mahawewa", "Eluvankulama",
+            "Wilpattu", "Kala Wewa", "Puttalam Town",
+            
+            // Ratnapura District (22 towns)
+            "Ratnapura", "Embilipitiya", "Balangoda", "Pelmadulla", "Eheliyagoda", "Kuruwita", "Godakawela", "Kalawana",
+            "Rakwana", "Nivitigala", "Kahawatta", "Weligepola", "Ayagama", "Imbulpe", "Kolonna", "Opanayaka",
+            "Palmadulla", "Ratnapura Town", "Kiriella", "Elapatha", "Palindanuwara", "Malimboda",
+            
+            // Trincomalee District (22 towns)
+            "Trincomalee", "Kinniya", "Mutur", "Kantale", "China Bay", "Nilaveli", "Kuchchaveli",
+            "Gomarankadawala", "Morawewa", "Seruwila", "Padavi Siripura", "Thambalagamuwa", "Somawathiya",
+            "Trincomalee Town", "Fort Frederick", "Uppuveli", "Pigeon Island", "Marble Beach",
+            "Verugal", "Pulmoddai", "Kalkudah", "Muttur",
+            
+            // Vavuniya District (15 towns)
+            "Vavuniya", "Cheddikulam", "Settikulam", "Nedunkeni", "Omanthai",
+            "Vavuniya South", "Vavuniya North", "Venkalacheddikulam", "Puliyankulama", "Kebitigollewa",
+            "Horowupotana", "Medawachchiya", "Vavuniya Town", "Thandikulam", "Nellikulama"
+        );
     }
 
     @Transactional
@@ -604,5 +1033,207 @@ public class DatabaseSeeder {
         Banner banner = new Banner();
         banner.setImageUrl(imageUrl);
         bannerRepository.save(banner);
+    }
+
+    @Transactional
+    public void seedOrders() {
+        long orderCount = orderRepository.count();
+        long orderItemCount = orderItemRepository.count();
+        
+        log.info("📊 Current database state: {} orders, {} order items", orderCount, orderItemCount);
+        
+        if (orderCount > 0) {
+            log.info("⏭️ Orders already exist, skipping...");
+            
+            // Show existing orders for verification
+            List<Order> orders = orderRepository.findAll();
+            orders.forEach(order -> {
+                log.info("  📦 Order ID: {}, Buyer: {}, Items: {}, Total: {}, Status: {}", 
+                    order.getId(), 
+                    order.getBuyerUser().getEmail(),
+                    order.getOrderItems() != null ? order.getOrderItems().size() : 0,
+                    order.getTotalAmount(),
+                    order.getOrderStatus());
+            });
+            return;
+        }
+
+        // Get some users for orders - use actual customers created in seedUsers
+        User buyer1 = userRepository.findByEmail("nuwan@customer.com").orElse(null);
+        User buyer2 = userRepository.findByEmail("samantha@customer.com").orElse(null);
+
+        if (buyer1 == null || buyer2 == null) {
+            log.warn("⚠️ Required users not found for orders");
+            return;
+        }
+
+        // Get some products for order items
+        List<Fish> fishes = fishRepository.findAll();
+        List<IndustrialStuff> equipment = industrialStuffRepository.findAll();
+
+        if (fishes.isEmpty() && equipment.isEmpty()) {
+            log.warn("⚠️ No products found for orders");
+            return;
+        }
+
+        // Create Order 1 - Fish order
+        Order order1 = new Order();
+        order1.setBuyerUser(buyer1);
+        order1.setOrderDateTime(LocalDateTime.now().minusDays(2));
+        order1.setAddressPlace("123/A");
+        order1.setAddressStreet("Main Street");
+        order1.setAddressDistrict("Colombo");
+        order1.setAddressTown("Nugegoda");
+        order1.setOrderStatus(Order.OrderStatus.DELIVERY_PENDING);
+        order1.setTotalAmount(new java.math.BigDecimal("5500.00"));
+        order1 = orderRepository.save(order1);
+        
+        // Create delivery quote request for order 1
+        DeliveryQuoteRequest quoteRequest1 = createDeliveryQuoteRequest(order1.getId());
+        
+        // Create delivery quote from Dinesh for order 1
+        User dinesh = userRepository.findByEmail("dinesh@delivery.com").orElse(null);
+        if (dinesh != null) {
+            DeliveryQuote quote1 = createDeliveryQuote(quoteRequest1, dinesh, "500.00", LocalDate.now().plusDays(3), "Fast delivery");
+            order1.setAcceptedDeliveryQuoteId(quote1.getId());
+            orderRepository.save(order1);
+            // Add quote request ID to order's list
+            order1.setDeliveryQuoteRequestIds(Arrays.asList(quoteRequest1.getId()));
+            orderRepository.save(order1);
+        }
+        
+        log.info("✓ Created order 1 for {}", buyer1.getEmail());
+
+        // Create Order Items for Order 1 - Use Sunil's farm products
+        User sunil = userRepository.findByEmail("sunil@farm.com").orElse(null);
+        if (sunil != null) {
+            List<Fish> sunilFishes = fishRepository.findAll().stream()
+                .filter(f -> f.getNicNumber().equals(sunil.getNicNumber()))
+                .toList();
+            
+            if (!sunilFishes.isEmpty()) {
+                // Add Tilapia from Sunil's farm
+                Fish tilapia = sunilFishes.stream()
+                    .filter(f -> f.getName().equals("Tilapia"))
+                    .findFirst()
+                    .orElse(sunilFishes.get(0));
+                
+                OrderItem item1 = new OrderItem();
+                item1.setOrder(order1);
+                item1.setProductId(tilapia.getId());
+                item1.setProductType("FISH");
+                item1.setProductName(tilapia.getName());
+                item1.setQuantity(20);
+                item1.setPrice(new java.math.BigDecimal("450.00"));
+                orderItemRepository.save(item1);
+                log.info("  ✓ Added order item: {} x20 from Sunil's farm", tilapia.getName());
+
+                // Add Catfish from Sunil's farm
+                if (sunilFishes.size() > 1) {
+                    Fish catfish = sunilFishes.stream()
+                        .filter(f -> f.getName().equals("Catfish"))
+                        .findFirst()
+                        .orElse(sunilFishes.get(1));
+                    
+                    OrderItem item2 = new OrderItem();
+                    item2.setOrder(order1);
+                    item2.setProductId(catfish.getId());
+                    item2.setProductType("FISH");
+                    item2.setProductName(catfish.getName());
+                    item2.setQuantity(10);
+                    item2.setPrice(new java.math.BigDecimal("550.00"));
+                    orderItemRepository.save(item2);
+                    log.info("  ✓ Added order item: {} x10 from Sunil's farm", catfish.getName());
+                }
+            }
+        }
+
+        // Create Order 2 - Mixed order
+        Order order2 = new Order();
+        order2.setBuyerUser(buyer2);
+        order2.setOrderDateTime(LocalDateTime.now().minusDays(1));
+        order2.setAddressPlace("456/B");
+        order2.setAddressStreet("Lake Road");
+        order2.setAddressDistrict("Gampaha");
+        order2.setAddressTown("Kiribathgoda");
+        order2.setOrderStatus(Order.OrderStatus.ORDER_PENDING);
+        order2.setTotalAmount(new java.math.BigDecimal("8200.00"));
+        order2 = orderRepository.save(order2);
+        
+        // Create delivery quote request for order 2
+        DeliveryQuoteRequest quoteRequest2 = createDeliveryQuoteRequest(order2.getId());
+        
+        // Create delivery quote from Dinesh for order 2
+        if (dinesh != null) {
+            DeliveryQuote quote2 = createDeliveryQuote(quoteRequest2, dinesh, "750.00", LocalDate.now().plusDays(5), "Standard delivery");
+            order2.setAcceptedDeliveryQuoteId(quote2.getId());
+            orderRepository.save(order2);
+            // Add quote request ID to order's list
+            order2.setDeliveryQuoteRequestIds(Arrays.asList(quoteRequest2.getId()));
+            orderRepository.save(order2);
+        }
+        
+        log.info("✓ Created order 2 for {}", buyer2.getEmail());
+
+        // Create Order Items for Order 2 - Mixed order with Sunil's fish and industrial items
+        if (!equipment.isEmpty()) {
+            IndustrialStuff equip1 = equipment.get(0);
+            OrderItem item3 = new OrderItem();
+            item3.setOrder(order2);
+            item3.setProductId(equip1.getId());
+            item3.setProductType("INDUSTRIAL");
+            item3.setProductName(equip1.getName());
+            item3.setQuantity(2);
+            item3.setPrice(new java.math.BigDecimal("3500.00"));
+            orderItemRepository.save(item3);
+            log.info("  ✓ Added order item: {} x2", equip1.getName());
+        }
+
+        // Add Carp from Sunil's farm to order 2
+        if (sunil != null) {
+            List<Fish> sunilFishes = fishRepository.findAll().stream()
+                .filter(f -> f.getNicNumber().equals(sunil.getNicNumber()))
+                .toList();
+            
+            Fish carp = sunilFishes.stream()
+                .filter(f -> f.getName().equals("Carp"))
+                .findFirst()
+                .orElse(!sunilFishes.isEmpty() ? sunilFishes.get(0) : null);
+            
+            if (carp != null) {
+                OrderItem item4 = new OrderItem();
+                item4.setOrder(order2);
+                item4.setProductId(carp.getId());
+                item4.setProductType("FISH");
+                item4.setProductName(carp.getName());
+                item4.setQuantity(5);
+                item4.setPrice(new java.math.BigDecimal("650.00"));
+                orderItemRepository.save(item4);
+                log.info("  ✓ Added order item: {} x5 from Sunil's farm", carp.getName());
+            }
+        }
+
+        log.info("✅ Created 2 orders with order items");
+    }
+
+    private DeliveryQuoteRequest createDeliveryQuoteRequest(Long orderId) {
+        DeliveryQuoteRequest request = new DeliveryQuoteRequest();
+        request.setOrderId(orderId);
+        request.setLastRespondingDateTime(LocalDateTime.now().plusDays(7));
+        return deliveryQuoteRequestRepository.save(request);
+    }
+
+    private DeliveryQuote createDeliveryQuote(DeliveryQuoteRequest quoteRequest, User deliveryPerson, 
+                                              String fee, LocalDate deliveryDate, String notes) {
+        DeliveryQuote quote = new DeliveryQuote();
+        quote.setQuoteRequest(quoteRequest);
+        quote.setDeliveryPerson(deliveryPerson);
+        quote.setDeliveryFee(new java.math.BigDecimal(fee));
+        quote.setDeliveryDate(deliveryDate);
+        quote.setNotes(notes);
+        quote.setStatus(DeliveryQuote.QuoteStatus.ACCEPTED);
+        quote.setAcceptedAt(LocalDateTime.now());
+        quote.setValidUntil(LocalDateTime.now().plusDays(7));
+        return deliveryQuoteRepository.save(quote);
     }
 }

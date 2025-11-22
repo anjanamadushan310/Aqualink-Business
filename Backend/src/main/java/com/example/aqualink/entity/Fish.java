@@ -35,7 +35,7 @@ public class Fish {
     private String description;
     private String nicNumber;
     private Integer stock;
-    private Double price;
+    private double price;
     private Integer minimumQuantity;
 
     @Column(name = "create_date_and_time")
