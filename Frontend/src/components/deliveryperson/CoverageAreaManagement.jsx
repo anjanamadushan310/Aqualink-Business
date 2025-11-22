@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import DistrictSelector from './DistrictSelector';
 import deliveryService from '../../services/deliveryService';
+import { districtToTowns } from '../user-profile/locationData';
 
 const CoverageAreaManagement = () => {
   const [coverageData, setCoverageData] = useState({});
@@ -9,50 +10,50 @@ const CoverageAreaManagement = () => {
   const [error, setError] = useState(null);
   const [saving, setSaving] = useState(false);
 
-  // ALL SRI LANKAN PROVINCES AND DISTRICTS WITH TOWNS
+  // Convert districtToTowns to province-based structure for DistrictSelector
   const sriLankanDistricts = {
     'Western': {
-      'Colombo': ['Colombo 01', 'Colombo 02', 'Colombo 03', 'Colombo 04', 'Colombo 05', 'Colombo 06', 'Colombo 07', 'Colombo 08', 'Colombo 09', 'Colombo 10', 'Colombo 11', 'Colombo 12', 'Colombo 13', 'Colombo 14', 'Colombo 15', 'Dehiwala', 'Mount Lavinia', 'Moratuwa', 'Piliyandala', 'Kesbewa', 'Maharagama', 'Kotte', 'Battaramulla', 'Rajagiriya'],
-      'Gampaha': ['Gampaha', 'Negombo', 'Katunayake', 'Wattala', 'Ja-Ela', 'Kandana', 'Ragama', 'Kiribathgoda', 'Kelaniya', 'Peliyagoda', 'Kadawatha', 'Mirigama', 'Minuwangoda', 'Divulapitiya', 'Nittambuwa', 'Veyangoda'],
-      'Kalutara': ['Kalutara', 'Panadura', 'Horana', 'Matugama', 'Beruwala', 'Aluthgama', 'Bentota', 'Wadduwa', 'Bandaragama', 'Ingiriya', 'Bulathsinhala']
+      'Colombo': districtToTowns['Colombo'] || [],
+      'Gampaha': districtToTowns['Gampaha'] || [],
+      'Kalutara': districtToTowns['Kalutara'] || []
     },
     'Central': {
-      'Kandy': ['Kandy', 'Peradeniya', 'Gampola', 'Nawalapitiya', 'Wattegama', 'Harispattuwa', 'Pathadumbara', 'Akurana', 'Kadugannawa', 'Pilimatalawa'],
-      'Matale': ['Matale', 'Dambulla', 'Sigiriya', 'Naula', 'Ukuwela', 'Rattota', 'Pallepola', 'Galewela'],
-      'Nuwara Eliya': ['Nuwara Eliya', 'Hatton', 'Talawakele', 'Nanu Oya', 'Maskeliya', 'Bogawantalawa', 'Kotagala', 'Ginigathhena']
+      'Kandy': districtToTowns['Kandy'] || [],
+      'Matale': districtToTowns['Matale'] || [],
+      'Nuwara Eliya': districtToTowns['Nuwara Eliya'] || []
     },
     'Southern': {
-      'Galle': ['Galle', 'Hikkaduwa', 'Ambalangoda', 'Elpitiya', 'Bentota', 'Baddegama', 'Yakkalamulla', 'Neluwa', 'Nagoda', 'Imaduwa'],
-      'Matara': ['Matara', 'Weligama', 'Mirissa', 'Dikwella', 'Tangalle', 'Kamburupitiya', 'Akuressa', 'Hakmana', 'Kotapola'],
-      'Hambantota': ['Hambantota', 'Tissamaharama', 'Kataragama', 'Tangalle', 'Ambalantota', 'Beliatta', 'Weeraketiya', 'Suriyawewa']
+      'Galle': districtToTowns['Galle'] || [],
+      'Matara': districtToTowns['Matara'] || [],
+      'Hambantota': districtToTowns['Hambantota'] || []
     },
     'Northern': {
-      'Jaffna': ['Jaffna', 'Nallur', 'Chavakachcheri', 'Point Pedro', 'Karainagar', 'Velanai', 'Kayts', 'Delft'],
-      'Kilinochchi': ['Kilinochchi', 'Pallai', 'Paranthan', 'Poonakary'],
-      'Mannar': ['Mannar', 'Nanattan', 'Madhu', 'Pesalai', 'Erukkalampiddy'],
-      'Vavuniya': ['Vavuniya', 'Nedunkeni', 'Settikulam', 'Omanthai', 'Puliyankulam'],
-      'Mullaitivu': ['Mullaitivu', 'Oddusuddan', 'Puthukudiyiruppu', 'Weli Oya', 'Manthai East']
+      'Jaffna': districtToTowns['Jaffna'] || [],
+      'Kilinochchi': districtToTowns['Kilinochchi'] || [],
+      'Mannar': districtToTowns['Mannar'] || [],
+      'Vavuniya': districtToTowns['Vavuniya'] || [],
+      'Mullaitivu': districtToTowns['Mullaitivu'] || []
     },
     'Eastern': {
-      'Trincomalee': ['Trincomalee', 'Kinniya', 'Mutur', 'Kuchchaveli', 'Nilaveli', 'Uppuveli', 'Kantalai'],
-      'Batticaloa': ['Batticaloa', 'Kalkudah', 'Passikudah', 'Valachchenai', 'Eravur', 'Oddamavadi', 'Chenkaladi'],
-      'Ampara': ['Ampara', 'Akkaraipattu', 'Kalmunai', 'Sammanthurai', 'Pottuvil', 'Uhana', 'Damana', 'Mahaoya', 'Padiyathalawa']
+      'Trincomalee': districtToTowns['Trincomalee'] || [],
+      'Batticaloa': districtToTowns['Batticaloa'] || [],
+      'Ampara': districtToTowns['Ampara'] || []
     },
     'North Western': {
-      'Kurunegala': ['Kurunegala', 'Puttalam', 'Chilaw', 'Kuliyapitiya', 'Narammala', 'Wariyapola', 'Pannala', 'Melsiripura', 'Bingiriya'],
-      'Puttalam': ['Puttalam', 'Chilaw', 'Nattandiya', 'Wennappuwa', 'Marawila', 'Dankotuwa', 'Anamaduwa', 'Karuwalagaswewa']
+      'Kurunegala': districtToTowns['Kurunegala'] || [],
+      'Puttalam': districtToTowns['Puttalam'] || []
     },
     'North Central': {
-      'Anuradhapura': ['Anuradhapura', 'Kekirawa', 'Tambuttegama', 'Eppawala', 'Medawachchiya', 'Rambewa', 'Galenbindunuwewa', 'Mihintale'],
-      'Polonnaruwa': ['Polonnaruwa', 'Kaduruwela', 'Medirigiriya', 'Hingurakgoda', 'Dimbulagala', 'Welikanda', 'Lankapura']
+      'Anuradhapura': districtToTowns['Anuradhapura'] || [],
+      'Polonnaruwa': districtToTowns['Polonnaruwa'] || []
     },
     'Uva': {
-      'Badulla': ['Badulla', 'Bandarawela', 'Ella', 'Haputale', 'Welimada', 'Diyatalawa', 'Hali Ela', 'Demodara', 'Passara'],
-      'Monaragala': ['Monaragala', 'Wellawaya', 'Kataragama', 'Buttala', 'Bibile', 'Medagama', 'Siyambalanduwa']
+      'Badulla': districtToTowns['Badulla'] || [],
+      'Monaragala': districtToTowns['Monaragala'] || []
     },
     'Sabaragamuwa': {
-      'Ratnapura': ['Ratnapura', 'Embilipitiya', 'Balangoda', 'Pelmadulla', 'Eheliyagoda', 'Kuruwita', 'Godakawela', 'Kalawana'],
-      'Kegalle': ['Kegalle', 'Mawanella', 'Warakapola', 'Rambukkana', 'Galigamuwa', 'Yatiyantota', 'Ruwanwella', 'Deraniyagala']
+      'Ratnapura': districtToTowns['Ratnapura'] || [],
+      'Kegalle': districtToTowns['Kegalle'] || []
     }
   };
 
@@ -78,12 +79,19 @@ const CoverageAreaManagement = () => {
         
         const response = await deliveryService.getCoverageAreaData();
         console.log('Coverage area response:', response);
+        console.log('Selected districts:', response.selectedDistricts);
+        console.log('Selected towns:', response.selectedTowns);
         
         // The response is the data directly (not wrapped in {success, data})
         const data = response;
         
         // Set coverage data in the format expected by the component
         setCoverageData({
+          selectedDistricts: data.selectedDistricts || [],
+          selectedTowns: data.selectedTowns || {}
+        });
+        
+        console.log('Coverage data set:', {
           selectedDistricts: data.selectedDistricts || [],
           selectedTowns: data.selectedTowns || {}
         });

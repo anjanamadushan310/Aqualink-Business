@@ -181,26 +181,35 @@ const DeliveryRequests = () => {
                       Delivery Information
                     </h4>
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {/* Customer Details */}
-                      <div key="customer-info" className="bg-white rounded-lg p-4 border border-gray-200">
+                      {/* Pickup/Seller Details */}
+                      <div key="pickup-info" className="bg-white rounded-lg p-4 border border-green-200">
+                        <div className="flex items-center mb-2">
+                          <div className="w-4 h-4 bg-green-500 rounded-full mr-3"></div>
+                          <span className="font-semibold text-gray-900">PICKUP FROM (SELLER)</span>
+                        </div>
+                        <div className="ml-7 space-y-1">
+                          <p className="text-gray-800 font-medium">{request.sellerName || 'N/A'}</p>
+                          <p className="text-gray-600">{request.sellerPhone || 'N/A'}</p>
+                          <p className="text-sm text-gray-700 mt-2">{request.sellerAddress || request.pickupAddress || 'Address not available'}</p>
+                          {request.sellerDistrict && request.sellerTown && (
+                            <p className="text-sm text-gray-600 font-medium">{request.sellerDistrict}, {request.sellerTown}</p>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Delivery/Customer Details */}
+                      <div key="delivery-info" className="bg-white rounded-lg p-4 border border-blue-200">
                         <div className="flex items-center mb-2">
                           <div className="w-4 h-4 bg-blue-500 rounded-full mr-3"></div>
-                          <span className="font-semibold text-gray-900">CUSTOMER INFO</span>
+                          <span className="font-semibold text-gray-900">DELIVER TO (CUSTOMER)</span>
                         </div>
                         <div className="ml-7 space-y-1">
                           <p className="text-gray-800 font-medium">{request.customerName || 'N/A'}</p>
                           <p className="text-gray-600">{request.customerPhone || 'N/A'}</p>
-                        </div>
-                      </div>
-
-                      {/* Delivery Address */}
-                      <div key="delivery-address" className="bg-white rounded-lg p-4 border border-gray-200">
-                        <div className="flex items-center mb-2">
-                          <div className="w-4 h-4 bg-red-500 rounded-full mr-3"></div>
-                          <span className="font-semibold text-gray-900">DELIVER TO</span>
-                        </div>
-                        <div className="ml-7 space-y-1">
-                          <p className="text-gray-800 font-medium">{request.deliveryAddress || 'N/A'}</p>
+                          <p className="text-sm text-gray-700 mt-2">{request.deliveryAddress || 'N/A'}</p>
+                          {request.district && request.town && (
+                            <p className="text-sm text-gray-600 font-medium">{request.district}, {request.town}</p>
+                          )}
                         </div>
                       </div>
                     </div>

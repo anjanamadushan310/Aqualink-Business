@@ -30,10 +30,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // List<Order> findByOrderDateBetween(LocalDate startDate, LocalDate endDate);
     
     // Find orders for a specific shop owner (orders containing products from that seller)
+    // Updated to work with new OrderItem structure (productId + productType instead of product reference)
     @Query("SELECT DISTINCT o FROM Order o " +
            "JOIN o.orderItems oi " +
-           "JOIN oi.product p " +
-           "WHERE p.nicNumber = :sellerNic")
+           "WHERE oi.productType = 'FISH' AND EXISTS (" +
+           "  SELECT 1 FROM Fish f WHERE f.id = oi.productId AND f.nicNumber = :sellerNic" +
+           ") OR oi.productType = 'INDUSTRIAL' AND EXISTS (" +
+           "  SELECT 1 FROM IndustrialStuff i WHERE i.id = oi.productId AND i.nicNumber = :sellerNic" +
+           ")")
     List<Order> findOrdersBySellerNic(@Param("sellerNic") String sellerNic);
     
     // Find pending orders that need delivery assignment - commented out due to missing field
@@ -49,10 +53,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     // Long countByDeliveryPersonAndStatus(@Param("deliveryNic") String deliveryNic, @Param("status") Order.OrderStatus status);
     
     // Find orders containing products from specific seller with status filter
+    // Updated to work with new OrderItem structure (productId + productType instead of product reference)
     @Query("SELECT DISTINCT o FROM Order o " +
            "JOIN o.orderItems oi " +
-           "JOIN oi.product p " +
-           "WHERE p.nicNumber = :sellerNic " +
-           "AND o.orderStatus IN :statuses")
+           "WHERE (oi.productType = 'FISH' AND EXISTS (" +
+           "  SELECT 1 FROM Fish f WHERE f.id = oi.productId AND f.nicNumber = :sellerNic" +
+           ") OR oi.productType = 'INDUSTRIAL' AND EXISTS (" +
+           "  SELECT 1 FROM IndustrialStuff i WHERE i.id = oi.productId AND i.nicNumber = :sellerNic" +
+           ")) AND o.orderStatus IN :statuses")
     List<Order> findOrdersBySellerNicAndOrderStatuses(@Param("sellerNic") String sellerNic, @Param("statuses") List<Order.OrderStatus> statuses);
 }

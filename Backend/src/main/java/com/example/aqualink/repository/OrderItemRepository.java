@@ -10,6 +10,7 @@ import com.example.aqualink.entity.OrderItem;
 @Repository
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
 
-    @Query("SELECT SUM(oi.quantity) FROM OrderItem oi WHERE oi.product.id = :productId")
+    // Updated to work with new OrderItem structure (productId instead of product reference)
+    @Query("SELECT SUM(oi.quantity) FROM OrderItem oi WHERE oi.productId = :productId")
     Long findTotalSoldByProductId(@Param("productId") Long productId);
 }

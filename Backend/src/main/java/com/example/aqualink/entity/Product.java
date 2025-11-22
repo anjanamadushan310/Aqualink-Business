@@ -28,8 +28,8 @@ public abstract class Product {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Review> reviews;
 
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<OrderItem> orderItems;
+    // Removed @OneToMany for orderItems since OrderItem no longer references Product directly
+    // OrderItem now stores productId and productType instead
 
     @Column(name = "product_type", insertable = false, updatable = false)
     private String productType;
