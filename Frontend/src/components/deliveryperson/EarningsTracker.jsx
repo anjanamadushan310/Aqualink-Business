@@ -1,97 +1,53 @@
 import React, { useState, useEffect } from 'react';
+import apiService from '../../services/apiService';
 
 const EarningsTracker = () => {
   const [earnings, setEarnings] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedDateRange, setSelectedDateRange] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [filterPaymentMethod, setFilterPaymentMethod] = useState('all');
 
-  // Mock earnings data - WITH PAYMENT INFO
-  const mockEarnings = [
-    {
-      id: 1,
-      orderId: 'ORD001',
-      date: '2025-09-01',
-      customerName: 'Saman Perera',
-      orderTotal: 6000,
-      deliveryFee: 1200,
-      totalPayment: 7200,
-      paymentMethod: 'Cash on Delivery',
-      pickupLocation: 'Colombo 03',
-      deliveryLocation: 'Dehiwala',
-      status: 'COLLECTED',
-      paymentDate: '2025-09-01T18:30:00',
-      collectionNotes: 'Payment collected successfully upon delivery'
-    },
-    {
-      id: 2,
-      orderId: 'ORD002',
-      date: '2025-09-01',
-      customerName: 'Kamal Silva',
-      orderTotal: 2700,
-      deliveryFee: 1500,
-      totalPayment: 4200,
-      paymentMethod: 'Paid',
-      pickupLocation: 'Colombo 03',
-      deliveryLocation: 'Negombo',
-      status: 'COLLECTED',
-      paymentDate: '2025-09-01T16:45:00',
-      collectionNotes: 'Pre-paid order - delivery fee earned'
-    },
-    {
-      id: 3,
-      orderId: 'ORD003',
-      date: '2025-09-02',
-      customerName: 'Nimal Fernando',
-      orderTotal: 23000,
-      deliveryFee: 2200,
-      totalPayment: 25200,
-      paymentMethod: 'Cash on Delivery',
-      pickupLocation: 'Colombo 03',
-      deliveryLocation: 'Peradeniya',
-      status: 'COLLECTED',
-      paymentDate: '2025-09-02T14:20:00',
-      collectionNotes: 'Large order payment collected - customer very satisfied'
-    },
-    {
-      id: 4,
-      orderId: 'ORD004',
-      date: '2025-09-02',
-      customerName: 'Priya Jayawardena',
-      orderTotal: 7000,
-      deliveryFee: 800,
-      totalPayment: 7800,
-      paymentMethod: 'Paid',
-      pickupLocation: 'Colombo 03',
-      deliveryLocation: 'Colombo 07',
-      status: 'COLLECTED',
-      paymentDate: '2025-09-02T12:15:00',
-      collectionNotes: 'Pre-paid order completed successfully'
-    },
-    {
-      id: 5,
-      orderId: 'ORD005',
-      date: '2025-09-03',
-      customerName: 'Ruwan Wickramasinghe',
-      orderTotal: 1450,
-      deliveryFee: 900,
-      totalPayment: 2350,
-      paymentMethod: 'Cash on Delivery',
-      pickupLocation: 'Colombo 03',
-      deliveryLocation: 'Moratuwa',
-      status: 'COLLECTED',
-      paymentDate: '2025-09-03T19:10:00',
-      collectionNotes: 'Quick local delivery - payment collected'
-    }
-  ];
-
   useEffect(() => {
-    setTimeout(() => {
-      setEarnings(mockEarnings);
-      setLoading(false);
-    }, 800);
+    fetchEarnings();
   }, []);
+
+  const fetchEarnings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch accepted quotes from backend
+      const quotes = await apiService.get('/delivery-quotes/my-quotes');
+      
+      // Filter only ACCEPTED quotes and map to earnings format
+      const acceptedQuotes = quotes
+        .filter(quote => quote.quoteStatus === 'ACCEPTED')
+        .map(quote => ({
+          id: quote.quoteId,
+          orderId: quote.orderId || 'N/A',
+          date: quote.deliveryDate,
+          customerName: quote.customerName || 'N/A',
+          orderTotal: quote.orderTotal || 0,
+          deliveryFee: quote.deliveryFee,
+          totalPayment: (quote.orderTotal || 0) + quote.deliveryFee,
+          paymentMethod: quote.paymentMethod || 'Cash on Delivery',
+          pickupLocation: quote.pickupLocation || 'N/A',
+          deliveryLocation: quote.deliveryLocation || 'N/A',
+          status: 'COLLECTED',
+          paymentDate: quote.acceptedAt || quote.deliveryDate,
+          collectionNotes: quote.notes || ''
+        }));
+      
+      setEarnings(acceptedQuotes);
+    } catch (err) {
+      console.error('Error fetching earnings:', err);
+      setError(err.message || 'Failed to load earnings data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filterEarnings = () => {
     let filtered = [...earnings];
@@ -187,6 +143,24 @@ const EarningsTracker = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading earnings data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64 bg-gray-50">
+        <div className="text-center bg-white p-8 rounded-lg shadow-lg max-w-md">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h3 className="text-xl font-semibold text-gray-900 mb-2">Error Loading Earnings</h3>
+          <p className="text-red-600 mb-6">{error}</p>
+          <button 
+            onClick={fetchEarnings}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition duration-200"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );

@@ -48,6 +48,9 @@ public class Order {
     @Column(name = "total_amount", precision = 10, scale = 2)
     private BigDecimal totalAmount;
 
+    @Column(name = "payment_method", length = 50)
+    private String paymentMethod;
+
     @Column(name = "accepted_delivery_quote_id")
     private Long acceptedDeliveryQuoteId;
 
