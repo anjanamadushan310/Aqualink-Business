@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -24,6 +25,9 @@ public interface DeliveryQuoteRepository extends JpaRepository<DeliveryQuote, Lo
     
     @Query("SELECT dq FROM DeliveryQuote dq WHERE dq.validUntil <= :currentTime AND dq.status = 'PENDING'")
     List<DeliveryQuote> findExpiredQuotes(@Param("currentTime") LocalDateTime currentTime);
+    
+    @Query("SELECT dq FROM DeliveryQuote dq WHERE dq.deliveryDate <= :expiryDate AND dq.status = 'PENDING'")
+    List<DeliveryQuote> findQuotesToExpireByDeliveryDate(@Param("expiryDate") LocalDate expiryDate);
     
     boolean existsByQuoteRequestAndDeliveryPerson(DeliveryQuoteRequest quoteRequest, User deliveryPerson);
     

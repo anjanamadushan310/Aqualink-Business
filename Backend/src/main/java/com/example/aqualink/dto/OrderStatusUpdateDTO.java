@@ -13,4 +13,5 @@ public class OrderStatusUpdateDTO {
     private String newStatus;
     private String notes;
     private String deliveryPersonNic; // Used for delivery person operations
+    private String cancellationReason; // Reason for canceling the order
 }

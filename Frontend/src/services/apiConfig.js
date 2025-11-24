@@ -36,6 +36,8 @@ export const API_ENDPOINTS = {
     UPDATE_STATUS: '/delivery/update-status',
     COMPLETE_DELIVERY: (orderId) => `/delivery/complete/${orderId}`,
     START_DELIVERY: (orderId) => `/delivery/start/${orderId}`,
+    MARK_AS_DELIVERED: (orderId) => `/delivery/delivered/${orderId}`,
+    CANCEL_DELIVERY: (orderId) => `/delivery/cancel/${orderId}`,
     PICKUP_ORDER: (orderId) => `/delivery/pickup/${orderId}`,
     STATS: '/delivery/stats',
     // Coverage Area Management
@@ -54,7 +56,9 @@ export const API_ENDPOINTS = {
     ACCEPT: (quoteId) => `/delivery-quotes/accept/${quoteId}`,
     MY_REQUESTS: '/delivery-quotes/my-requests',
     MY_QUOTES: '/delivery-quotes/my-quotes',
-    REQUEST_DETAILS: (sessionId) => `/delivery-quotes/request/${sessionId}`
+    REQUEST_DETAILS: (sessionId) => `/delivery-quotes/request/${sessionId}`,
+    ORDER_DETAILS: (orderId) => `/delivery-quotes/order/${orderId}/details`,
+    UPDATE_QUOTE: (quoteId) => `/delivery-quotes/${quoteId}`
   },
   
   // Cart Endpoints

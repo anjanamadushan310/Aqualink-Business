@@ -4,6 +4,7 @@ import Sidebar from '../../components/deliveryperson/Sidebar';
 import DeliveryHistory from '../../components/deliveryperson/DeliveryHistory';
 import DeliveryRequests from '../../components/deliveryperson/DeliveryRequests';
 import QuoteManagement from '../../components/deliveryperson/QuoteManagement';
+import ApprovedQuotes from '../../components/deliveryperson/ApprovedQuotes';
 import CoverageAreaManagement from '../../components/deliveryperson/CoverageAreaManagement';
 import EarningsTracker from '../../components/deliveryperson/EarningsTracker';
 import CurrentDeliveries from '../../components/deliveryperson/CurrentDeliveries';
@@ -42,6 +43,11 @@ const DeliveryPersonDashboard = () => {
             <Route path="quote-management" element={
               <RoleBasedRoute allowedRoles={[ROLES.DELIVERY_PERSON]}>
                 <QuoteManagement />
+              </RoleBasedRoute>
+            } />
+            <Route path="approved-quotes" element={
+              <RoleBasedRoute allowedRoles={[ROLES.DELIVERY_PERSON]}>
+                <ApprovedQuotes />
               </RoleBasedRoute>
             } />
             <Route path="coverage-area" element={

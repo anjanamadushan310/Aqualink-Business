@@ -356,9 +356,30 @@ public class DeliveryQuoteService {
         
         System.out.println("Found " + pendingOrders.size() + " orders with DELIVERY_PENDING status");
 
+        // Get orders that have an ACCEPTED quote - these should be removed from delivery requests
+        List<DeliveryQuoteRequest> allQuoteRequests = deliveryQuoteRequestRepository.findAll();
+        Set<Long> orderIdsWithAcceptedQuotes = new HashSet<>();
+        
+        for (DeliveryQuoteRequest quoteRequest : allQuoteRequests) {
+            List<DeliveryQuote> acceptedQuotes = deliveryQuoteRepository.findByQuoteRequestAndStatus(
+                quoteRequest, DeliveryQuote.QuoteStatus.ACCEPTED);
+            if (!acceptedQuotes.isEmpty()) {
+                // This order has an accepted quote - exclude it from delivery requests
+                orderIdsWithAcceptedQuotes.add(quoteRequest.getOrderId());
+            }
+        }
+        
+        System.out.println("Found " + orderIdsWithAcceptedQuotes.size() + " orders with accepted quotes (will be excluded)");
+
         // Filter orders by coverage area and convert to DTOs
         List<DeliveryRequestForFrontendDTO> filteredRequests = pendingOrders.stream()
                 .filter(order -> {
+                    // EXCLUDE orders that have an ACCEPTED quote (delivery is assigned)
+                    if (orderIdsWithAcceptedQuotes.contains(order.getId())) {
+                        System.out.println("Order " + order.getId() + " - EXCLUDED: Already has accepted quote");
+                        return false;
+                    }
+                    
                     // If no coverage areas defined, show all requests (backward compatibility)
                     if (coverageTowns.isEmpty()) {
                         System.out.println("No coverage areas defined - showing order " + order.getId());
@@ -372,7 +393,9 @@ public class DeliveryQuoteService {
                         String normalizedCustomerTown = customerTown.trim().toLowerCase();
                         customerTownMatches = coverageTowns.contains(normalizedCustomerTown);
                         System.out.println("Order " + order.getId() + " - Customer Town: '" + customerTown + 
-                                         "' - Matches: " + customerTownMatches);
+                                         "' (normalized: '" + normalizedCustomerTown + "') - Matches: " + customerTownMatches);
+                    } else {
+                        System.out.println("Order " + order.getId() + " - Customer has no town in order");
                     }
                     
                     // Check seller address town (all items in one order are from the same seller)
@@ -404,11 +427,20 @@ public class DeliveryQuoteService {
                         System.out.println("Order " + order.getId() + " - No order items");
                     }
                     
-                    // Show order if EITHER customer town OR any seller town matches
-                    boolean matches = customerTownMatches || sellerTownMatches;
+                    // CRITICAL: Delivery person must be able to cover BOTH pickup (seller) AND delivery (customer) locations
+                    // Show order only if BOTH seller town AND customer town match the coverage areas
+                    boolean matches = customerTownMatches && sellerTownMatches;
                     
                     if (!matches) {
-                        System.out.println("Order " + order.getId() + " - No matching towns - excluding");
+                        if (!customerTownMatches && !sellerTownMatches) {
+                            System.out.println("Order " + order.getId() + " - EXCLUDED: Neither customer nor seller town in coverage area");
+                        } else if (!customerTownMatches) {
+                            System.out.println("Order " + order.getId() + " - EXCLUDED: Customer town '" + customerTown + "' not in coverage area (seller town matches)");
+                        } else if (!sellerTownMatches) {
+                            System.out.println("Order " + order.getId() + " - EXCLUDED: Seller town '" + sellerTownRaw + "' not in coverage area (customer town matches)");
+                        }
+                    } else {
+                        System.out.println("Order " + order.getId() + " - INCLUDED: Both customer and seller towns match coverage area");
                     }
                     
                     return matches;
@@ -685,13 +717,20 @@ public class DeliveryQuoteService {
         quote.setNotes(createDTO.getNotes() != null ? createDTO.getNotes() : "Delivery quote from " + deliveryPerson.getName());
         quote.setStatus(DeliveryQuote.QuoteStatus.PENDING);
         
-        // Set validity: use expiresAt if provided, otherwise use validityHours, default to 48 hours
-        if (createDTO.getExpiresAt() != null) {
-            quote.setValidUntil(createDTO.getExpiresAt());
-        } else {
-            int validityHours = createDTO.getValidityHours() > 0 ? createDTO.getValidityHours() : 48;
-            quote.setValidUntil(LocalDateTime.now().plusHours(validityHours));
+        // Set validUntil to 11:59 PM on the day BEFORE the delivery date
+        // This ensures quotes expire with time for customers to make alternative arrangements
+        LocalDateTime expirationDateTime = createDTO.getDeliveryDate()
+                .minusDays(1)  // Day before delivery
+                .atTime(23, 59, 0);  // 11:59 PM
+        
+        // If the calculated expiration is in the past, set it to 24 hours from now as fallback
+        if (expirationDateTime.isBefore(LocalDateTime.now())) {
+            System.out.println("WARNING: Calculated expiration is in the past. Using 24 hours from now as fallback.");
+            expirationDateTime = LocalDateTime.now().plusHours(24);
         }
+        
+        quote.setValidUntil(expirationDateTime);
+        System.out.println("Quote will expire at: " + expirationDateTime + " (day before delivery date: " + createDTO.getDeliveryDate() + ")");
 
         DeliveryQuote savedQuote = deliveryQuoteRepository.save(quote);
         System.out.println("Quote created with ID: " + savedQuote.getId() + " for order: " + order.getId());
@@ -753,9 +792,32 @@ public class DeliveryQuoteService {
             }
         }
         
+        // Auto-expire quotes that have passed their validUntil time
+        LocalDateTime now = LocalDateTime.now();
+        int expiredCount = 0;
+        for (DeliveryQuote quote : quotes) {
+            if (quote.getStatus() == DeliveryQuote.QuoteStatus.PENDING && 
+                quote.getValidUntil().isBefore(now)) {
+                System.out.println("Auto-expiring quote ID: " + quote.getId() + 
+                                 " (validUntil: " + quote.getValidUntil() + " is before now: " + now + ")");
+                quote.setStatus(DeliveryQuote.QuoteStatus.EXPIRED);
+                deliveryQuoteRepository.save(quote);
+                expiredCount++;
+            }
+        }
+        if (expiredCount > 0) {
+            System.out.println("✓ Auto-expired " + expiredCount + " quote(s)");
+        }
+        
+        // Filter out expired quotes - customers should only see PENDING, ACCEPTED, or REJECTED
+        List<DeliveryQuote> validQuotes = quotes.stream()
+                .filter(quote -> quote.getStatus() != DeliveryQuote.QuoteStatus.EXPIRED)
+                .collect(Collectors.toList());
+        
+        System.out.println("✓ Returning " + validQuotes.size() + " valid (non-expired) quote(s) to customer");
         System.out.println("========================================");
         
-        return quotes.stream()
+        return validQuotes.stream()
                 .map(this::convertToDeliveryQuoteDTO)
                 .collect(Collectors.toList());
     }
@@ -767,7 +829,19 @@ public class DeliveryQuoteService {
         // For now, get all quotes since sessionId mapping is not fully implemented
         List<DeliveryQuote> quotes = deliveryQuoteRepository.findAll();
         
+        // Auto-expire quotes that have passed their validUntil time
+        LocalDateTime now = LocalDateTime.now();
+        for (DeliveryQuote quote : quotes) {
+            if (quote.getStatus() == DeliveryQuote.QuoteStatus.PENDING && 
+                quote.getValidUntil().isBefore(now)) {
+                quote.setStatus(DeliveryQuote.QuoteStatus.EXPIRED);
+                deliveryQuoteRepository.save(quote);
+            }
+        }
+        
+        // Filter out expired quotes for customer view
         return quotes.stream()
+                .filter(quote -> quote.getStatus() != DeliveryQuote.QuoteStatus.EXPIRED)
                 .map(this::convertToDeliveryQuoteDTO)
                 .collect(Collectors.toList());
     }
@@ -779,12 +853,16 @@ public class DeliveryQuoteService {
         DeliveryQuote quote = deliveryQuoteRepository.findById(quoteId)
                 .orElseThrow(() -> new RuntimeException("Quote not found"));
 
-        if (quote.getStatus() != DeliveryQuote.QuoteStatus.PENDING) {
-            throw new RuntimeException("Quote is no longer available");
+        // Auto-expire if validUntil has passed
+        if (quote.getStatus() == DeliveryQuote.QuoteStatus.PENDING && 
+            quote.getValidUntil().isBefore(LocalDateTime.now())) {
+            quote.setStatus(DeliveryQuote.QuoteStatus.EXPIRED);
+            deliveryQuoteRepository.save(quote);
+            throw new RuntimeException("This quote has expired and is no longer available");
         }
 
-        if (quote.getValidUntil().isBefore(LocalDateTime.now())) {
-            throw new RuntimeException("Quote has expired");
+        if (quote.getStatus() != DeliveryQuote.QuoteStatus.PENDING) {
+            throw new RuntimeException("Quote is no longer available. Current status: " + quote.getStatus());
         }
 
         quote.setStatus(DeliveryQuote.QuoteStatus.ACCEPTED);
@@ -1086,6 +1164,167 @@ public class DeliveryQuoteService {
             order.getId(),
             totalItems,
             totalAmount));
+        
+        return dto;
+    }
+
+    /**
+     * Update delivery quote (only for PENDING quotes)
+     */
+    public DeliveryQuoteDTO updateQuote(Long quoteId, BigDecimal deliveryFee, java.time.LocalDate deliveryDate, String deliveryPersonEmail) {
+        // Find the quote
+        DeliveryQuote quote = deliveryQuoteRepository.findById(quoteId)
+                .orElseThrow(() -> new RuntimeException("Quote not found"));
+
+        // Verify the delivery person owns this quote
+        if (!quote.getDeliveryPerson().getEmail().equals(deliveryPersonEmail)) {
+            throw new RuntimeException("You don't have permission to update this quote");
+        }
+
+        // Only allow updates for PENDING quotes
+        if (quote.getStatus() != DeliveryQuote.QuoteStatus.PENDING) {
+            throw new RuntimeException("Only pending quotes can be updated. Current status: " + quote.getStatus());
+        }
+
+        // Validate input
+        if (deliveryFee == null || deliveryFee.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new RuntimeException("Delivery fee must be greater than zero");
+        }
+
+        if (deliveryDate == null || deliveryDate.isBefore(java.time.LocalDate.now())) {
+            throw new RuntimeException("Delivery date must be in the future");
+        }
+
+        // Update the quote
+        quote.setDeliveryFee(deliveryFee);
+        quote.setDeliveryDate(deliveryDate);
+        
+        // Recalculate validUntil based on new delivery date
+        // Set to 11:59 PM on the day BEFORE the delivery date
+        LocalDateTime newExpirationDateTime = deliveryDate
+                .minusDays(1)  // Day before delivery
+                .atTime(23, 59, 0);  // 11:59 PM
+        
+        // If the calculated expiration is in the past, set it to 24 hours from now as fallback
+        if (newExpirationDateTime.isBefore(LocalDateTime.now())) {
+            System.out.println("WARNING: Updated expiration would be in the past. Using 24 hours from now as fallback.");
+            newExpirationDateTime = LocalDateTime.now().plusHours(24);
+        }
+        
+        quote.setValidUntil(newExpirationDateTime);
+        System.out.println("Quote ID " + quoteId + " updated. New expiration: " + newExpirationDateTime + " (day before delivery: " + deliveryDate + ")");
+
+        // Save the updated quote
+        DeliveryQuote updatedQuote = deliveryQuoteRepository.save(quote);
+
+        // Convert to DTO and return
+        return convertToDeliveryQuoteDTO(updatedQuote);
+    }
+
+    /**
+     * Get order details for delivery person's accepted quote
+     */
+    public DeliveryQuoteRequestWithOrderDTO getOrderDetailsForDeliveryPerson(Long orderId, String deliveryPersonEmail) {
+        // Find the delivery person
+        User deliveryPerson = userRepository.findByEmail(deliveryPersonEmail)
+                .orElseThrow(() -> new RuntimeException("Delivery person not found"));
+
+        // Find the order
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // Load product information for order items to get seller details
+        if (order.getOrderItems() != null) {
+            for (OrderItem orderItem : order.getOrderItems()) {
+                if ("FISH".equals(orderItem.getProductType())) {
+                    fishRepository.findById(orderItem.getProductId()).ifPresent(orderItem::setFishProduct);
+                } else if ("INDUSTRIAL".equals(orderItem.getProductType())) {
+                    industrialStuffRepository.findById(orderItem.getProductId()).ifPresent(orderItem::setIndustrialProduct);
+                }
+            }
+        }
+
+        // Verify that the delivery person has an accepted quote for this order
+        List<DeliveryQuote> quotes = deliveryQuoteRepository.findByDeliveryPerson(deliveryPerson);
+        boolean hasAcceptedQuote = quotes.stream()
+                .anyMatch(q -> q.getQuoteRequest().getOrderId().equals(orderId) && 
+                              q.getStatus() == DeliveryQuote.QuoteStatus.ACCEPTED);
+
+        if (!hasAcceptedQuote) {
+            throw new RuntimeException("You don't have an accepted quote for this order");
+        }
+
+        // Build the response DTO with order details
+        DeliveryQuoteRequestWithOrderDTO dto = new DeliveryQuoteRequestWithOrderDTO();
+        
+        // Set basic order info
+        dto.setOrderId(order.getId());
+        dto.setSubtotal(order.getTotalAmount() != null ? order.getTotalAmount().doubleValue() : 0.0);
+        dto.setOrderStatus(order.getOrderStatus());
+        dto.setOrderDateTime(order.getOrderDateTime());
+        
+        // Set customer info
+        User customer = order.getBuyerUser();
+        if (customer != null) {
+            dto.setCustomerName(customer.getName());
+            dto.setCustomerPhone(customer.getPhoneNumber());
+            dto.setCustomerEmail(customer.getEmail());
+        }
+        
+        // Set seller info from the first order item (if available)
+        if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+            OrderItem firstItem = order.getOrderItems().get(0);
+            User seller = firstItem.getProductUser();
+            if (seller != null) {
+                dto.setSellerName(seller.getName());
+                dto.setSellerPhone(seller.getPhoneNumber());
+                dto.setSellerEmail(seller.getEmail());
+                
+                // Build seller address from UserProfile
+                if (seller.getUserProfile() != null) {
+                    UserProfile profile = seller.getUserProfile();
+                    StringBuilder addressBuilder = new StringBuilder();
+                    if (profile.getAddressPlace() != null && !profile.getAddressPlace().isEmpty()) {
+                        addressBuilder.append(profile.getAddressPlace());
+                    }
+                    if (profile.getAddressStreet() != null && !profile.getAddressStreet().isEmpty()) {
+                        if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                        addressBuilder.append(profile.getAddressStreet());
+                    }
+                    if (profile.getAddressTown() != null && !profile.getAddressTown().isEmpty()) {
+                        if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                        addressBuilder.append(profile.getAddressTown());
+                    }
+                    if (profile.getAddressDistrict() != null && !profile.getAddressDistrict().isEmpty()) {
+                        if (addressBuilder.length() > 0) addressBuilder.append(", ");
+                        addressBuilder.append(profile.getAddressDistrict());
+                    }
+                    dto.setSellerAddress(addressBuilder.toString());
+                }
+            }
+        }
+        
+        // Set delivery address
+        DeliveryQuoteRequestWithOrderDTO.DeliveryAddressDTO addressDTO = new DeliveryQuoteRequestWithOrderDTO.DeliveryAddressDTO();
+        addressDTO.setPlace(order.getAddressPlace());
+        addressDTO.setStreet(order.getAddressStreet());
+        addressDTO.setDistrict(order.getAddressDistrict());
+        addressDTO.setTown(order.getAddressTown());
+        dto.setDeliveryAddress(addressDTO);
+        
+        // Set order items
+        if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+            List<DeliveryQuoteRequestWithOrderDTO.CartItemDTO> items = new ArrayList<>();
+            for (OrderItem orderItem : order.getOrderItems()) {
+                DeliveryQuoteRequestWithOrderDTO.CartItemDTO itemDTO = new DeliveryQuoteRequestWithOrderDTO.CartItemDTO();
+                itemDTO.setProductName(orderItem.getProductName());
+                itemDTO.setQuantity(orderItem.getQuantity());
+                itemDTO.setPrice(orderItem.getPrice() != null ? orderItem.getPrice().doubleValue() : 0.0);
+                itemDTO.setProductType(orderItem.getProductType());
+                items.add(itemDTO);
+            }
+            dto.setItems(items);
+        }
         
         return dto;
     }

@@ -1,15 +1,8 @@
 package com.example.aqualink.service;
 
 import com.example.aqualink.dto.*;
-import com.example.aqualink.entity.Order;
-import com.example.aqualink.entity.OrderItem;
-import com.example.aqualink.entity.User;
-import com.example.aqualink.entity.DeliveryPersonCoverage;
-import com.example.aqualink.entity.DeliveryPersonAvailability;
-import com.example.aqualink.repository.OrderRepository;
-import com.example.aqualink.repository.UserRepository;
-import com.example.aqualink.repository.DeliveryPersonCoverageRepository;
-import com.example.aqualink.repository.DeliveryPersonAvailabilityRepository;
+import com.example.aqualink.entity.*;
+import com.example.aqualink.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,9 +13,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
-import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +28,8 @@ public class DeliveryService {
     private final UserRepository userRepository;
     private final DeliveryPersonCoverageRepository coverageRepository;
     private final DeliveryPersonAvailabilityRepository availabilityRepository;
+    private final DeliveryQuoteRepository deliveryQuoteRepository;
+    private final DeliveryQuoteRequestRepository deliveryQuoteRequestRepository;
 
     /**
      * Get all orders assigned to a specific delivery person
@@ -50,13 +42,44 @@ public class DeliveryService {
 
     /**
      * Get orders for delivery person filtered by status
-     * Note: Current Order entity doesn't have delivery person field
+     * Uses delivery quotes to find orders assigned to this delivery person
      */
     public List<OrderDeliveryDTO> getOrdersByDeliveryPersonAndStatus(String deliveryPersonNic, String status) {
         // Convert string status to enum (for validation)
-        convertStringToOrderStatus(status);
-        // Since current entity doesn't have delivery person field, return empty list for now
-        return List.of();
+        Order.OrderStatus orderStatus = convertStringToOrderStatus(status);
+        
+        // Find delivery person user
+        Optional<User> deliveryPersonOpt = userRepository.findByNicNumber(deliveryPersonNic);
+        if (deliveryPersonOpt.isEmpty()) {
+            return List.of();
+        }
+        
+        User deliveryPerson = deliveryPersonOpt.get();
+        
+        // Find all accepted quotes for this delivery person
+        List<DeliveryQuote> acceptedQuotes = deliveryQuoteRepository.findByDeliveryPersonAndStatus(
+            deliveryPerson, 
+            DeliveryQuote.QuoteStatus.ACCEPTED
+        );
+        
+        // Extract order IDs from the quote requests
+        List<Long> orderIds = acceptedQuotes.stream()
+            .map(quote -> quote.getQuoteRequest().getOrderId())
+            .distinct()
+            .collect(Collectors.toList());
+        
+        if (orderIds.isEmpty()) {
+            return List.of();
+        }
+        
+        // Fetch orders and filter by status
+        return orderIds.stream()
+            .map(orderRepository::findById)
+            .filter(Optional::isPresent)
+            .map(Optional::get)
+            .filter(order -> order.getOrderStatus() == orderStatus)
+            .map(this::convertToOrderDeliveryDTO)
+            .collect(Collectors.toList());
     }
 
     /**
@@ -91,6 +114,12 @@ public class DeliveryService {
         try {
             Order.OrderStatus status = Order.OrderStatus.valueOf(updateDTO.getNewStatus().toUpperCase());
             order.setOrderStatus(status);
+            
+            // If status is CANCELED, save cancellation reason and timestamp
+            if (status == Order.OrderStatus.CANCELED) {
+                order.setCancellationReason(updateDTO.getCancellationReason());
+                order.setCancelledDateTime(LocalDateTime.now());
+            }
         } catch (IllegalArgumentException e) {
             // If invalid status, default to ORDER_PENDING
             order.setOrderStatus(Order.OrderStatus.ORDER_PENDING);
@@ -232,7 +261,9 @@ public class DeliveryService {
                 BigDecimal.ZERO, // deliveryFee - not in new structure, use 0
                 "N/A", // deliveryRequiredStatus - not in new structure
                 null, // deliveryStartDate - not in new structure
-                orderItemDTOs
+                orderItemDTOs,
+                order.getCancellationReason(),
+                order.getCancelledDateTime()
         );
     }
 

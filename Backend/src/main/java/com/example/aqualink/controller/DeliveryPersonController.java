@@ -12,6 +12,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -210,9 +211,52 @@ public class DeliveryPersonController {
         
         OrderStatusUpdateDTO updateDTO = new OrderStatusUpdateDTO();
         updateDTO.setOrderId(orderId);
-        updateDTO.setNewStatus("in_transit");
+        updateDTO.setNewStatus("SHIPPED");
         updateDTO.setDeliveryPersonNic(deliveryPersonNic);
         updateDTO.setNotes("Delivery started");
+        
+        OrderDeliveryDTO updatedOrder = deliveryService.updateOrderStatus(updateDTO);
+        return ResponseEntity.ok(updatedOrder);
+    }
+
+    /**
+     * Mark order as delivered (complete the delivery)
+     */
+    @PutMapping("/delivered/{orderId}")
+    @PreAuthorize("hasRole('DELIVERY_PERSON')")
+    public ResponseEntity<OrderDeliveryDTO> markAsDelivered(
+            @PathVariable Long orderId,
+            Authentication authentication) {
+        String deliveryPersonNic = getCurrentUserNic(authentication);
+        
+        OrderStatusUpdateDTO updateDTO = new OrderStatusUpdateDTO();
+        updateDTO.setOrderId(orderId);
+        updateDTO.setNewStatus("DELIVERED");
+        updateDTO.setDeliveryPersonNic(deliveryPersonNic);
+        updateDTO.setNotes("Order delivered successfully");
+        
+        OrderDeliveryDTO updatedOrder = deliveryService.updateOrderStatus(updateDTO);
+        return ResponseEntity.ok(updatedOrder);
+    }
+
+    /**
+     * Cancel delivery (mark order as canceled)
+     */
+    @PutMapping("/cancel/{orderId}")
+    @PreAuthorize("hasRole('DELIVERY_PERSON')")
+    public ResponseEntity<OrderDeliveryDTO> cancelDelivery(
+            @PathVariable Long orderId,
+            @RequestBody(required = false) Map<String, String> requestBody,
+            Authentication authentication) {
+        String deliveryPersonNic = getCurrentUserNic(authentication);
+        String reason = requestBody != null ? requestBody.get("reason") : "Canceled by delivery person";
+        
+        OrderStatusUpdateDTO updateDTO = new OrderStatusUpdateDTO();
+        updateDTO.setOrderId(orderId);
+        updateDTO.setNewStatus("CANCELED");
+        updateDTO.setDeliveryPersonNic(deliveryPersonNic);
+        updateDTO.setNotes(reason);
+        updateDTO.setCancellationReason(reason);
         
         OrderDeliveryDTO updatedOrder = deliveryService.updateOrderStatus(updateDTO);
         return ResponseEntity.ok(updatedOrder);

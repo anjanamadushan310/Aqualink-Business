@@ -32,6 +32,16 @@ class DeliveryService {
     return apiService.put(API_ENDPOINTS.DELIVERY.START_DELIVERY(orderId));
   }
 
+  // Mark delivery as delivered
+  async markAsDelivered(orderId) {
+    return apiService.put(API_ENDPOINTS.DELIVERY.MARK_AS_DELIVERED(orderId));
+  }
+
+  // Cancel delivery
+  async cancelDelivery(orderId, reason) {
+    return apiService.put(API_ENDPOINTS.DELIVERY.CANCEL_DELIVERY(orderId), { reason });
+  }
+
   // Pickup order
   async pickupOrder(orderId) {
     return apiService.put(API_ENDPOINTS.DELIVERY.PICKUP_ORDER(orderId));
@@ -119,6 +129,68 @@ class DeliveryService {
         success: false,
         data: [],
         message: error.message || 'Failed to fetch quotes'
+      };
+    }
+  }
+
+  // Update delivery quote (only for PENDING quotes)
+  async updateQuote(quoteId, quoteData) {
+    try {
+      const data = await apiService.put(API_ENDPOINTS.DELIVERY_QUOTES.UPDATE_QUOTE(quoteId), quoteData);
+      return {
+        success: true,
+        data: data,
+        message: 'Quote updated successfully'
+      };
+    } catch (error) {
+      console.error('Error in updateQuote:', error);
+      
+      let errorMessage = 'Failed to update quote';
+      if (error.message.includes('403')) {
+        errorMessage = 'Access denied. You can only update your own quotes.';
+      } else if (error.message.includes('401')) {
+        errorMessage = 'Your session has expired. Please log in again.';
+      } else if (error.message.includes('400')) {
+        errorMessage = 'Invalid quote data. Please check all fields and try again.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      return {
+        success: false,
+        data: null,
+        message: errorMessage
+      };
+    }
+  }
+
+  // Get order details for delivery person's accepted quote
+  async getOrderDetailsForDelivery(orderId) {
+    try {
+      const data = await apiService.get(API_ENDPOINTS.DELIVERY_QUOTES.ORDER_DETAILS(orderId));
+      return {
+        success: true,
+        data: data,
+        message: 'Order details fetched successfully'
+      };
+    } catch (error) {
+      console.error('Error in getOrderDetailsForDelivery:', error);
+      
+      let errorMessage = 'Failed to fetch order details';
+      if (error.message.includes('403')) {
+        errorMessage = 'Access denied. You need an accepted quote for this order.';
+      } else if (error.message.includes('401')) {
+        errorMessage = 'Your session has expired. Please log in again.';
+      } else if (error.message.includes('404')) {
+        errorMessage = 'Order not found.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      return {
+        success: false,
+        data: null,
+        message: errorMessage
       };
     }
   }
