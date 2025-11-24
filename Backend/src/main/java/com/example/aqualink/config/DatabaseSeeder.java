@@ -1059,10 +1059,9 @@ public class DatabaseSeeder {
                     buyerEmail = "User#" + (order.getBuyerUser() != null ? "unknown" : "null");
                 }
                 
-                log.info("  📦 Order ID: {}, Buyer: {}, Items: {}, Total: {}, Status: {}", 
+                log.info("  📦 Order ID: {}, Buyer: {}, Total: {}, Status: {}", 
                     order.getId(), 
                     buyerEmail,
-                    order.getOrderItems() != null ? order.getOrderItems().size() : 0,
                     order.getTotalAmount(),
                     order.getOrderStatus());
             });

@@ -18,6 +18,7 @@ public class DeliveryQuoteRequestWithOrderDTO {
     private String status;
     private OrderPreferencesDTO preferences;
     private DeliveryAddressDTO deliveryAddress;
+    private String paymentMethod; // Payment method (CASH_ON_DELIVERY or CARD_PAYMENT)
     
     // Additional fields for delivery person order details view
     private Order.OrderStatus orderStatus;

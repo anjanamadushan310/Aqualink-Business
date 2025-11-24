@@ -179,6 +179,15 @@ public class DeliveryQuoteService {
         order.setTotalAmount(BigDecimal.valueOf(requestDTO.getSubtotal()));
         order.setOrderDateTime(LocalDateTime.now());
         
+        // Set payment method
+        if (requestDTO.getPaymentMethod() != null) {
+            order.setPaymentMethod(requestDTO.getPaymentMethod());
+            System.out.println("Payment method set: " + requestDTO.getPaymentMethod());
+        } else {
+            order.setPaymentMethod("CASH_ON_DELIVERY"); // Default to cash on delivery
+            System.out.println("Payment method defaulted to: CASH_ON_DELIVERY");
+        }
+        
         // Set delivery address
         if (requestDTO.getDeliveryAddress() != null) {
             order.setAddressPlace(requestDTO.getDeliveryAddress().getPlace());

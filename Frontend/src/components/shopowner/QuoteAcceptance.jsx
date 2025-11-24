@@ -35,7 +35,6 @@ const QuoteAcceptance = () => {
   const [selectedQuote, setSelectedQuote] = useState(null); // Selected quote ID
 
   // UI state management
-  const [paymentMethod, setPaymentMethod] = useState('Cash on Delivery');
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [sortBy, setSortBy] = useState('price'); // Sort quotes by price or rating
@@ -373,7 +372,6 @@ const QuoteAcceptance = () => {
           subtotal: orderData.subtotal,
           deliveryFee: quote.deliveryFee,
           totalAmount: orderData.subtotal + quote.deliveryFee,
-          paymentMethod: paymentMethod,
           deliveryPartner: {
             name: quote.deliveryPersonName,
             rating: quote.rating,
@@ -709,68 +707,6 @@ const QuoteAcceptance = () => {
                 })}
               </div>
             )}
-
-            {/* Payment Method Section */}
-            {selectedQuote && (
-              <div className="bg-white p-6 rounded-lg shadow-sm">
-                <h2 className="text-xl font-bold text-gray-900 mb-4">Payment Method</h2>
-                <div className="space-y-3">
-                  <label className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="Cash on Delivery"
-                      checked={paymentMethod === 'Cash on Delivery'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="text-blue-600"
-                    />
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">💵</span>
-                      <div>
-                        <div className="font-semibold">Cash on Delivery</div>
-                        <div className="text-sm text-gray-600">Pay when the order is delivered</div>
-                      </div>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="Bank Transfer"
-                      checked={paymentMethod === 'Bank Transfer'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="text-blue-600"
-                    />
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">🏦</span>
-                      <div>
-                        <div className="font-semibold">Bank Transfer</div>
-                        <div className="text-sm text-gray-600">Pay in advance via bank transfer</div>
-                      </div>
-                    </div>
-                  </label>
-
-                  <label className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg cursor-pointer hover:bg-gray-50">
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value="Mobile Payment"
-                      checked={paymentMethod === 'Mobile Payment'}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="text-blue-600"
-                    />
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">📱</span>
-                      <div>
-                        <div className="font-semibold">Mobile Payment</div>
-                        <div className="text-sm text-gray-600">Pay via mobile banking or digital wallet</div>
-                      </div>
-                    </div>
-                  </label>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Order Summary Sidebar */}
@@ -808,14 +744,6 @@ const QuoteAcceptance = () => {
                   <span className="text-blue-600">{formatPrice(totalAmount)}</span>
                 </div>
               </div>
-
-              {/* Selected Payment Method Display */}
-              {selectedQuote && (
-                <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                  <div className="text-blue-800 text-sm font-medium">Payment Method:</div>
-                  <div className="text-blue-900 font-semibold">{paymentMethod}</div>
-                </div>
-              )}
 
               {/* Place Order Button */}
               <button 

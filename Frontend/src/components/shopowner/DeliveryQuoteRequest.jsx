@@ -19,6 +19,7 @@ const EnhancedDeliveryRequest = () => {
   const [availableTowns, setAvailableTowns] = useState([]);
   const [addressLoaded, setAddressLoaded] = useState(false); // Track if address has been loaded from profile
   const initialLoadRef = useRef(false); // Track if initial load has happened
+  const [paymentMethod, setPaymentMethod] = useState('CASH_ON_DELIVERY'); // Default to cash on delivery
   const [deliveryAddress, setDeliveryAddress] = useState({
     place: '',
     street: '',
@@ -264,6 +265,7 @@ const EnhancedDeliveryRequest = () => {
         sessionId: crypto.randomUUID(),
         sellerId: sellerId,
         businessName: businessName,
+        paymentMethod: paymentMethod, // Add payment method
         items: itemsToUse.map(item => ({
           cartItemId: item.cartItemId,
           productName: item.productName,
@@ -333,6 +335,7 @@ const EnhancedDeliveryRequest = () => {
           orderId: response.data.orderId,
           sellerId: sellerId,
           businessName: businessName,
+          paymentMethod: paymentMethod, // Include payment method
           items: requestData.items,
           subtotal: requestData.subtotal,
           deliveryAddress: requestData.deliveryAddress,
@@ -572,6 +575,47 @@ const EnhancedDeliveryRequest = () => {
               <option value={36}>36 hours</option>
             </select>
           </div>
+        </div>
+      </div>
+
+      {/* Payment Method */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <h3 className="text-xl font-semibold mb-4">Payment Method</h3>
+        <div className="space-y-3">
+          <label className="flex items-center p-4 border-2 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors border-green-500 bg-green-50">
+            <input
+              type="radio"
+              name="paymentMethod"
+              value="CASH_ON_DELIVERY"
+              checked={paymentMethod === 'CASH_ON_DELIVERY'}
+              onChange={(e) => setPaymentMethod(e.target.value)}
+              className="w-4 h-4 text-green-600 focus:ring-green-500"
+            />
+            <div className="ml-3 flex-1">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-gray-900">💵 Cash on Delivery</span>
+                <span className="text-sm text-green-600 font-semibold">Recommended</span>
+              </div>
+              <p className="text-sm text-gray-600 mt-1">Pay when you receive your order</p>
+            </div>
+          </label>
+
+          <label className="flex items-center p-4 border-2 rounded-lg cursor-not-allowed opacity-60 bg-gray-50 border-gray-300">
+            <input
+              type="radio"
+              name="paymentMethod"
+              value="CARD_PAYMENT"
+              disabled
+              className="w-4 h-4 text-blue-600 focus:ring-blue-500"
+            />
+            <div className="ml-3 flex-1">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-gray-700">💳 Card Payment</span>
+                <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-semibold">Coming Soon</span>
+              </div>
+              <p className="text-sm text-gray-500 mt-1">Online payment - Not available yet</p>
+            </div>
+          </label>
         </div>
       </div>
 

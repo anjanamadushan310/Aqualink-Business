@@ -16,6 +16,8 @@ import {
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const menuItems = [
     { id: 'sales-orders', label: 'Sales Orders', icon: ShoppingBagIcon, path: '/dashboard/sales-orders' },
+    { id: 'order-history', label: 'Order History', icon: ClipboardDocumentListIcon, path: '/dashboard/order-history' },
+    { id: 'canceled-orders', label: 'Canceled Orders', icon: XMarkIcon, path: '/dashboard/canceled-orders' },
     { id: 'fish-stock-management', label: 'Stock Management', icon: ClipboardDocumentListIcon, path: '/dashboard/stock-management' },
     { id: 'fish-ads-form', label: 'Create Ads', icon: PhotoIcon, path: '/dashboard/create-ads' },
   ];
