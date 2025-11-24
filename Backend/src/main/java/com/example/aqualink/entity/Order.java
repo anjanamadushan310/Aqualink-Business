@@ -62,6 +62,12 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<OrderItem> orderItems;
 
+    @Column(name = "cancellation_reason", length = 500)
+    private String cancellationReason;
+
+    @Column(name = "cancelled_date_time")
+    private LocalDateTime cancelledDateTime;
+
     // Order Status Enum
     public enum OrderStatus {
         DELIVERY_PENDING,

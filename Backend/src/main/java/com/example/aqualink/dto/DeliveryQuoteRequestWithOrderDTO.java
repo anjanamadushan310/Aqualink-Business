@@ -3,6 +3,7 @@ package com.example.aqualink.dto;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.example.aqualink.entity.Order;
 import lombok.Data;
 
 @Data
@@ -17,6 +18,19 @@ public class DeliveryQuoteRequestWithOrderDTO {
     private String status;
     private OrderPreferencesDTO preferences;
     private DeliveryAddressDTO deliveryAddress;
+    
+    // Additional fields for delivery person order details view
+    private Order.OrderStatus orderStatus;
+    private LocalDateTime orderDateTime;
+    private String customerName;
+    private String customerPhone;
+    private String customerEmail;
+
+    // Seller details
+    private String sellerName;
+    private String sellerEmail;
+    private String sellerPhone;
+    private String sellerAddress;
 
     @Data
     public static class CartItemDTO {

@@ -5,40 +5,60 @@ import deliveryService from '../../services/deliveryService';
 const DeliveryRequests = () => {
   const { user } = useContext(AuthContext);
   const [requests, setRequests] = useState([]);
+  const [myQuotes, setMyQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [selectedRequest, setSelectedRequest] = useState(null);
 
+  // Function to fetch and filter requests
+  const fetchRequests = async () => {
+    if (!user) {
+      setError('Please log in to view delivery requests');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Fetch available quote requests
+      const requestsResponse = await deliveryService.getAvailableQuoteRequests();
+      
+      // Fetch my quotes to filter out requests I've already quoted
+      const quotesResponse = await deliveryService.getMyQuotes();
+      
+      if (requestsResponse.success) {
+        const allRequests = requestsResponse.data || [];
+        const myQuotesList = quotesResponse.success ? quotesResponse.data || [] : [];
+        
+        // Get request IDs that I've already submitted quotes for
+        const quotedRequestIds = new Set(
+          myQuotesList.map(quote => quote.quoteRequestId).filter(Boolean)
+        );
+        
+        // Filter out requests I've already quoted
+        const availableRequests = allRequests.filter(
+          req => !quotedRequestIds.has(req.id)
+        );
+        
+        setRequests(availableRequests);
+        setMyQuotes(myQuotesList);
+      } else {
+        throw new Error(requestsResponse.message || 'Failed to fetch requests');
+      }
+    } catch (err) {
+      console.error('Error fetching delivery requests:', err);
+      setError('Failed to load delivery requests. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch available delivery quote requests from backend
   useEffect(() => {
-    const fetchRequests = async () => {
-      if (!user) {
-        setError('Please log in to view delivery requests');
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const response = await deliveryService.getAvailableQuoteRequests();
-        
-        if (response.success) {
-          setRequests(response.data || []);
-        } else {
-          throw new Error(response.message || 'Failed to fetch requests');
-        }
-      } catch (err) {
-        console.error('Error fetching delivery requests:', err);
-        setError('Failed to load delivery requests. Please try again.');
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchRequests();
   }, [user]);
 
@@ -111,6 +131,17 @@ const DeliveryRequests = () => {
             <div>
               <h1 className="text-3xl font-bold text-gray-900 mb-2">Active Delivery Requests</h1>
               <p className="text-gray-600">Review delivery requests and create quotes for customers</p>
+              {myQuotes.length > 0 && (
+                <p className="text-sm text-green-600 mt-1">
+                  ✓ {myQuotes.length} request(s) already quoted (hidden from this list)
+                </p>
+              )}
+            </div>
+            <div className="mt-4 lg:mt-0">
+              <div className="bg-blue-50 p-4 rounded-lg text-center border border-blue-200">
+                <div className="text-3xl font-bold text-blue-800">{requests.length}</div>
+                <div className="text-xs text-blue-600">Available Requests</div>
+              </div>
             </div>
           </div>
         </div>
@@ -272,13 +303,14 @@ const DeliveryRequests = () => {
         isOpen={showQuoteModal}
         onClose={() => setShowQuoteModal(false)}
         request={selectedRequest}
+        onQuoteCreated={fetchRequests}
       />
     </div>
   );
 };
 
 // CreateQuoteModal component
-const CreateQuoteModal = ({ isOpen, onClose, request }) => {
+const CreateQuoteModal = ({ isOpen, onClose, request, onQuoteCreated }) => {
   const { user } = useContext(AuthContext);
   const [quotePrice, setQuotePrice] = useState('');
   const [validUntil, setValidUntil] = useState('');
@@ -378,8 +410,10 @@ const CreateQuoteModal = ({ isOpen, onClose, request }) => {
         alert('Quote created successfully! Customer will be notified.');
         onClose();
         
-        // Refresh the requests list
-        window.location.reload();
+        // Refresh the requests list to remove the quoted request
+        if (onQuoteCreated) {
+          onQuoteCreated();
+        }
       } else {
         // Show the detailed error message from the service
         alert(response.message || 'Failed to create quote');

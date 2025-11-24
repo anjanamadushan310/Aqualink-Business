@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
@@ -24,6 +25,8 @@ public class OrderDeliveryDTO {
     private String deliveryRequiredStatus;
     private LocalDate deliveryStartDate;
     private List<OrderItemDTO> orderItems;
+    private String cancellationReason;
+    private LocalDateTime cancelledDateTime;
 
     @Data
     @NoArgsConstructor

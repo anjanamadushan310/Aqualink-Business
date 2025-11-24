@@ -1048,9 +1048,20 @@ public class DatabaseSeeder {
             // Show existing orders for verification
             List<Order> orders = orderRepository.findAll();
             orders.forEach(order -> {
+                // Safely access buyer email - handle lazy loading
+                String buyerEmail = "N/A";
+                try {
+                    if (order.getBuyerUser() != null) {
+                        buyerEmail = order.getBuyerUser().getEmail();
+                    }
+                } catch (Exception e) {
+                    // Handle lazy initialization exception
+                    buyerEmail = "User#" + (order.getBuyerUser() != null ? "unknown" : "null");
+                }
+                
                 log.info("  📦 Order ID: {}, Buyer: {}, Items: {}, Total: {}, Status: {}", 
                     order.getId(), 
-                    order.getBuyerUser().getEmail(),
+                    buyerEmail,
                     order.getOrderItems() != null ? order.getOrderItems().size() : 0,
                     order.getTotalAmount(),
                     order.getOrderStatus());

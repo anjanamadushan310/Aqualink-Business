@@ -16,11 +16,12 @@ import {
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const menuItems = [
     { id: 'delivery-requests', label: 'Delivery Requests', icon: ClipboardDocumentListIcon, path: '/dashboard/delivery-requests' },
-    { id: 'delivery-history', label: 'Delivery History', icon:  ShoppingBagIcon, path: '/dashboard/delivery-history' },
-    { id: 'quote-management', label: 'Quote Management', icon:StarIcon, path: '/dashboard/quote-management' },
-    { id: 'coverage-area-management', label: 'Coverage Area Management', icon:StarIcon, path: '/dashboard/coverage-area' },
-    { id: 'earnings-tracker', label: 'Earnings Tracker', icon:StarIcon, path: '/dashboard/earnings' },
-    { id: 'current-deliveries', label: 'Current Deliveries', icon:StarIcon, path: '/dashboard/current-deliveries' },
+    { id: 'approved-quotes', label: 'Approved Quotes', icon: StarIcon, path: '/dashboard/approved-quotes' },
+    { id: 'current-deliveries', label: 'Current Deliveries', icon: ShoppingBagIcon, path: '/dashboard/current-deliveries' },
+    { id: 'delivery-history', label: 'Delivery History', icon: StarIcon, path: '/dashboard/delivery-history' },
+    { id: 'quote-management', label: 'Quote Management', icon: StarIcon, path: '/dashboard/quote-management' },
+    { id: 'coverage-area-management', label: 'Coverage Area Management', icon: StarIcon, path: '/dashboard/coverage-area' },
+    { id: 'earnings-tracker', label: 'Earnings Tracker', icon: CurrencyDollarIcon, path: '/dashboard/earnings' },
   ];
 
   return (

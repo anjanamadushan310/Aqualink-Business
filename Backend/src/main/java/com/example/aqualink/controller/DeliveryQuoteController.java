@@ -1,6 +1,9 @@
 package com.example.aqualink.controller;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -9,6 +12,7 @@ import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +24,7 @@ import com.example.aqualink.dto.DeliveryQuoteRequestWithOrderDTO;
 import com.example.aqualink.dto.DeliveryQuoteWithOrderDTO;
 import com.example.aqualink.dto.DeliveryRequestForFrontendDTO;
 import com.example.aqualink.service.DeliveryQuoteService;
+import com.example.aqualink.service.QuoteExpirationScheduler;
 
 import lombok.RequiredArgsConstructor;
 
@@ -29,6 +34,7 @@ import lombok.RequiredArgsConstructor;
 public class DeliveryQuoteController {
 
     private final DeliveryQuoteService deliveryQuoteService;
+    private final QuoteExpirationScheduler quoteExpirationScheduler;
 
     /**
      * Create delivery quote request and update order with address (called when submit button is clicked)
@@ -163,5 +169,60 @@ public class DeliveryQuoteController {
         String customerEmail = authentication.getName();
         DeliveryQuoteRequestWithOrderDTO request = deliveryQuoteService.getQuoteRequestWithOrder(sessionId, customerEmail);
         return ResponseEntity.ok(request);
+    }
+
+    /**
+     * Get order details for delivery person's accepted quote
+     */
+    @GetMapping("/order/{orderId}/details")
+    @PreAuthorize("hasRole('DELIVERY_PERSON')")
+    public ResponseEntity<DeliveryQuoteRequestWithOrderDTO> getOrderDetailsForDeliveryPerson(
+            @PathVariable Long orderId,
+            Authentication authentication) {
+        String deliveryPersonEmail = authentication.getName();
+        DeliveryQuoteRequestWithOrderDTO orderDetails = deliveryQuoteService.getOrderDetailsForDeliveryPerson(orderId, deliveryPersonEmail);
+        return ResponseEntity.ok(orderDetails);
+    }
+
+    /**
+     * Update delivery quote (only for PENDING quotes)
+     */
+    @PutMapping("/{quoteId}")
+    @PreAuthorize("hasRole('DELIVERY_PERSON')")
+    public ResponseEntity<DeliveryQuoteDTO> updateQuote(
+            @PathVariable Long quoteId,
+            @RequestBody Map<String, Object> updateData,
+            Authentication authentication) {
+        String deliveryPersonEmail = authentication.getName();
+        
+        // Extract and validate delivery fee
+        BigDecimal deliveryFee = null;
+        if (updateData.get("deliveryFee") != null) {
+            deliveryFee = new BigDecimal(updateData.get("deliveryFee").toString());
+        }
+        
+        // Extract and validate delivery date
+        LocalDate deliveryDate = null;
+        if (updateData.get("deliveryDate") != null) {
+            deliveryDate = LocalDate.parse(updateData.get("deliveryDate").toString());
+        }
+        
+        DeliveryQuoteDTO updatedQuote = deliveryQuoteService.updateQuote(quoteId, deliveryFee, deliveryDate, deliveryPersonEmail);
+        return ResponseEntity.ok(updatedQuote);
+    }
+
+    /**
+     * Manual trigger for quote expiration (Admin only)
+     * This endpoint allows administrators to manually trigger the quote expiration process
+     */
+    @PostMapping("/admin/expire-quotes")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> manuallyExpireQuotes() {
+        int expiredCount = quoteExpirationScheduler.expireQuotesManually();
+        return ResponseEntity.ok(Map.of(
+            "success", true,
+            "message", "Quote expiration process completed",
+            "expiredCount", expiredCount
+        ));
     }
 }
