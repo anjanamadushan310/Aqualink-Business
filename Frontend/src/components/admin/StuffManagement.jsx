@@ -3,13 +3,29 @@ import { CheckCircleIcon, XCircleIcon, EyeIcon, PencilSquareIcon, TrashIcon } fr
 import axios from 'axios';
 
 // API Service for Industrial Stuff
-const API_BASE_URL = 'http://localhost:8080/api/v1/industrial';
+const API_BASE_URL = 'http://localhost:8080/api/admin/industrial';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   }
+});
+
+// Get JWT token from localStorage
+const getAuthToken = () => {
+  return localStorage.getItem('token');
+};
+
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const token = getAuthToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 const industrialApi = {

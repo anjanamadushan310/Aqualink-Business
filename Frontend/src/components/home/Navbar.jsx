@@ -12,7 +12,7 @@ function Navbar({
   setShowProfileMenu,
 }) {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, setActiveRole } = useAuth();
   const profileMenuRef = useRef(null);
 
   // Note: outside-click and escape handling for the profile menu is handled
@@ -22,8 +22,10 @@ function Navbar({
 
   // Handle dashboard selection with navigation
   const handleDashboardSelect = (role) => {
-    // All dashboards now use single /dashboard route
-    // The actual dashboard is determined by user's primary role
+    // Set the active role in AuthContext (persists to localStorage)
+    setActiveRole(role);
+    
+    // Navigate to dashboard (DashboardRouter will use activeRole)
     navigate(getDashboardPath());
     
     // Close the profile menu

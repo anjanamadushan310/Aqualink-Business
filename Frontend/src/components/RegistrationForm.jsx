@@ -135,13 +135,20 @@ const RegistrationForm = ({ setShowLogin }) => {
     try {
       const response = await axios.get(`${API_URL}/users/roles`);
       // Filter out any admin role by value; update as needed based on your actual admin value
-      setAvailableRoles(
-        response.data.filter(role => role.value !== 'ADMIN')
-      );
+      const roles = response.data
+        .filter(role => role.value !== 'ADMIN')
+        .map(role => {
+          // Update Shop Owner label to include (Buyer)
+          if (role.value === 'SHOP_OWNER') {
+            return { ...role, label: 'Shop Owner (Buyer)' };
+          }
+          return role;
+        });
+      setAvailableRoles(roles);
     } catch (error) {
       // fallback roles, also filtering out admin
       setAvailableRoles([
-        { value: 'SHOP_OWNER', label: 'Shop Owner' },
+        { value: 'SHOP_OWNER', label: 'Shop Owner (Buyer)' },
         { value: 'FARM_OWNER', label: 'Farm Owner' },
         { value: 'EXPORTER', label: 'Exporter' },
         { value: 'SERVICE_PROVIDER', label: 'Service Provider' },
@@ -454,7 +461,7 @@ const RegistrationForm = ({ setShowLogin }) => {
     });
 
     try {
-      const response = await axios.post(
+      await axios.post(
         `${API_URL}/users/register`,
         formDataToSend,
         {
@@ -464,7 +471,8 @@ const RegistrationForm = ({ setShowLogin }) => {
         }
       );
 
-      setMessage(response.data.message);
+      // Show success message with admin approval notice
+      setMessage('Registration successful! Please wait for admin approval to access your account.');
 
       // Reset form
       setFormData({

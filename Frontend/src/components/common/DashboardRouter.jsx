@@ -14,13 +14,13 @@ const DeliveryPersonDashboard = lazy(() => import('../../pages/dashboards/Delive
 
 /**
  * Dashboard router component that renders the appropriate dashboard
- * based on the user's primary role
+ * based on the user's active role
  */
 const DashboardRouter = () => {
-  const { user } = useAuth();
+  const { user, activeRole } = useAuth();
 
-  // Get user's primary role
-  const primaryRole = getPrimaryRole(user?.roles);
+  // Use activeRole if available, otherwise fall back to primary role
+  const currentRole = activeRole || getPrimaryRole(user?.roles);
 
   // Loading component
   const DashboardLoading = () => (
@@ -33,7 +33,7 @@ const DashboardRouter = () => {
   );
 
   // No role found - should not happen if ProtectedRoute is used correctly
-  if (!primaryRole) {
+  if (!currentRole) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 to-orange-50">
         <div className="text-center p-8 bg-white rounded-xl shadow-lg max-w-md">
@@ -55,7 +55,7 @@ const DashboardRouter = () => {
 
   // Map roles to dashboard components
   const getDashboardComponent = () => {
-    switch (primaryRole) {
+    switch (currentRole) {
       case ROLES.ADMIN:
         return <AdminDashboard />;
       case ROLES.SHOP_OWNER:
@@ -77,7 +77,7 @@ const DashboardRouter = () => {
               <div className="text-yellow-500 text-5xl mb-4">⚠️</div>
               <h2 className="text-2xl font-bold text-gray-800 mb-2">Unknown Role</h2>
               <p className="text-gray-600 mb-4">
-                Your role ({primaryRole}) is not recognized. Please contact support.
+                Your role ({currentRole}) is not recognized. Please contact support.
               </p>
               <a 
                 href="/" 

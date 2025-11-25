@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.example.aqualink.dto.IndustrialStuffPurchaseDTO;
 import com.example.aqualink.dto.IndustrialStuffResponseDTO;
@@ -48,6 +49,33 @@ public class IndustrialStuffViewService {
                         industrial.getInStock())
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    public List<IndustrialStuffResponseDTO> getApprovedIndustrialByUserId(Long userId) {
+        List<IndustrialStuff> industrialList = industrialStuffRepository.findByUserIdWithProfile(userId);
+        return industrialList.stream()
+                .filter(industrial -> industrial.getActiveStatus() == ActiveStatus.VERIFIED)
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public boolean updateIndustrialStock(Long industrialId, Long userId, Integer newStock) {
+        Optional<IndustrialStuff> industrialOpt = industrialStuffRepository.findById(industrialId);
+        
+        if (industrialOpt.isPresent()) {
+            IndustrialStuff industrial = industrialOpt.get();
+            
+            // Verify the industrial stuff belongs to the user
+            if (industrial.getUser() != null && industrial.getUser().getId().equals(userId)) {
+                industrial.setStock(newStock);
+                // Update inStock status based on new stock value
+                industrial.setInStock(newStock > 0);
+                industrialStuffRepository.save(industrial);
+                return true;
+            }
+        }
+        return false;
     }
 
     public boolean processPurchase(IndustrialStuffPurchaseDTO purchaseDTO) {

@@ -41,7 +41,8 @@ public class IndustrialStuffCreateService {
         industrialStuff.setNicNumber(industrialStuffRequestDTO.getNicNumber());
         industrialStuff.setStock(industrialStuffRequestDTO.getStock());
         industrialStuff.setPrice(industrialStuffRequestDTO.getPrice());
-        industrialStuff.setInStock(industrialStuffRequestDTO.getInStock());
+        // Auto-set inStock based on stock quantity
+        industrialStuff.setInStock(industrialStuffRequestDTO.getStock() > 0);
 
         // Set user relationship
         industrialStuff.setUser(user);

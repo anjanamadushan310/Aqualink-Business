@@ -7,13 +7,29 @@ import {
 import axios from 'axios';
 
 // API Service integrated within the component
-const API_BASE_URL = 'http://localhost:8080/api/v1/fish';
+const API_BASE_URL = 'http://localhost:8080/api/admin/fish';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
   }
+});
+
+// Get JWT token from localStorage
+const getAuthToken = () => {
+  return localStorage.getItem('token');
+};
+
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const token = getAuthToken();
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 const fishApi = {
