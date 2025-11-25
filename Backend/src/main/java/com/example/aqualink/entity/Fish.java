@@ -37,6 +37,7 @@ public class Fish {
     private Integer stock;
     private double price;
     private Integer minimumQuantity;
+    private Integer soldCount = 0;
 
     @Column(name = "create_date_and_time")
     private LocalDateTime createDateAndTime;
@@ -53,6 +54,13 @@ public class Fish {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
     private User user;
+
+    // Transient fields for reviews/ratings (calculated on demand)
+    @jakarta.persistence.Transient
+    private Double averageRating;
+
+    @jakarta.persistence.Transient
+    private Long reviewCount;
 
     //userprofile
 

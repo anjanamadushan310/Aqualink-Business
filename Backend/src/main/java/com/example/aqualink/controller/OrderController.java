@@ -1,5 +1,6 @@
 package com.example.aqualink.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -16,10 +17,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.aqualink.dto.DeliveredOrderItemDTO;
+import com.example.aqualink.entity.Fish;
+import com.example.aqualink.entity.IndustrialStuff;
 import com.example.aqualink.entity.Order;
+import com.example.aqualink.entity.OrderItem;
 import com.example.aqualink.entity.User;
+import com.example.aqualink.repository.FishRepository;
+import com.example.aqualink.repository.IndustrialStuffRepository;
 import com.example.aqualink.repository.OrderRepository;
+import com.example.aqualink.repository.ProductReviewRepository;
 import com.example.aqualink.repository.UserRepository;
+import com.example.aqualink.service.DeliveryServiceHelper;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -30,6 +39,18 @@ public class OrderController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private ProductReviewRepository productReviewRepository;
+
+    @Autowired
+    private FishRepository fishRepository;
+
+    @Autowired
+    private IndustrialStuffRepository industrialStuffRepository;
+
+    @Autowired
+    private DeliveryServiceHelper deliveryServiceHelper;
 
     /**
      * Get all orders for the logged-in buyer (customer who placed orders)
@@ -105,7 +126,14 @@ public class OrderController {
             }
 
             String newStatus = request.get("status");
-            order.setOrderStatus(Order.OrderStatus.valueOf(newStatus));
+            Order.OrderStatus previousStatus = order.getOrderStatus();
+            Order.OrderStatus newOrderStatus = Order.OrderStatus.valueOf(newStatus);
+            order.setOrderStatus(newOrderStatus);
+            
+            // Update sold counts if order is being marked as DELIVERED
+            if (newOrderStatus == Order.OrderStatus.DELIVERED && previousStatus != Order.OrderStatus.DELIVERED) {
+                deliveryServiceHelper.updateSoldCounts(order);
+            }
             
             Order updatedOrder = orderRepository.save(order);
             System.out.println("Order " + orderId + " status updated to " + newStatus);
@@ -253,6 +281,76 @@ public class OrderController {
             return ResponseEntity.ok(updatedOrder);
         } catch (Exception e) {
             System.err.println("Error updating seller order status: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Get all delivered order items for shop owner with review status
+     * Shop owner can review products they purchased (as a buyer)
+     */
+    @GetMapping("/delivered-items")
+    @PreAuthorize("hasRole('SHOP_OWNER')")
+    public ResponseEntity<List<DeliveredOrderItemDTO>> getDeliveredItems(Authentication authentication) {
+        try {
+            String email = authentication.getName();
+            User shopOwner = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            System.out.println("Fetching delivered items for shop owner: " + email + " (ID: " + shopOwner.getId() + ")");
+
+            // Get all delivered orders where this shop owner is the buyer
+            List<Order> deliveredOrders = orderRepository.findAll().stream()
+                    .filter(order -> order.getBuyerUser() != null && order.getBuyerUser().getId().equals(shopOwner.getId()))
+                    .filter(order -> order.getOrderStatus() == Order.OrderStatus.DELIVERED)
+                    .toList();
+
+            System.out.println("Found " + deliveredOrders.size() + " delivered orders for this shop owner");
+
+            List<DeliveredOrderItemDTO> deliveredItems = new ArrayList<>();
+
+            for (Order order : deliveredOrders) {
+                System.out.println("Processing order ID: " + order.getId() + " with " + order.getOrderItems().size() + " items");
+                for (OrderItem item : order.getOrderItems()) {
+                    // Check if this item has been reviewed by the shop owner
+                    boolean hasReview = productReviewRepository.existsByUserIdAndProductIdAndProductType(
+                        shopOwner.getId(), 
+                        item.getProductId(), 
+                        item.getProductType()
+                    );
+
+                    Long reviewId = null;
+                    if (hasReview) {
+                        var review = productReviewRepository.findByUserIdAndProductIdAndProductType(
+                            shopOwner.getId(), 
+                            item.getProductId(), 
+                            item.getProductType()
+                        );
+                        reviewId = review.isPresent() ? review.get().getId() : null;
+                    }
+
+                    DeliveredOrderItemDTO dto = new DeliveredOrderItemDTO();
+                    dto.setOrderId(order.getId());
+                    dto.setOrderItemId(item.getOrderItemId());
+                    dto.setProductId(item.getProductId());
+                    dto.setProductType(item.getProductType());
+                    dto.setProductName(item.getProductName());
+                    dto.setQuantity(item.getQuantity());
+                    dto.setPrice(item.getPrice());
+                    dto.setDeliveredDate(order.getOrderDateTime());
+                    dto.setHasReview(hasReview);
+                    dto.setReviewId(reviewId);
+
+                    deliveredItems.add(dto);
+                    System.out.println("Added item: " + item.getProductName() + " (hasReview: " + hasReview + ")");
+                }
+            }
+
+            System.out.println("Returning " + deliveredItems.size() + " delivered items");
+            return ResponseEntity.ok(deliveredItems);
+        } catch (Exception e) {
+            System.err.println("Error fetching delivered items: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest().build();
         }
     }

@@ -87,6 +87,22 @@ const FishCard = ({ fish, onPurchaseSuccess }) => {
               {fish.name}
             </h4>
             
+            {/* Rating and Sold Count */}
+            <div className="flex items-center gap-3 text-sm">
+              {fish.rating > 0 && (
+                <div className="flex items-center gap-1">
+                  <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                    <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+                  </svg>
+                  <span className="font-medium text-gray-700">{fish.rating.toFixed(1)}</span>
+                </div>
+              )}
+              {fish.totalSold > 0 && (
+                <span className="text-gray-500">
+                  <span className="font-medium text-blue-600">{fish.totalSold}</span> sold
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Location */}

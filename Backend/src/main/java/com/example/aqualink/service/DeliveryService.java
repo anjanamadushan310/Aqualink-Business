@@ -30,6 +30,9 @@ public class DeliveryService {
     private final DeliveryPersonAvailabilityRepository availabilityRepository;
     private final DeliveryQuoteRepository deliveryQuoteRepository;
     private final DeliveryQuoteRequestRepository deliveryQuoteRequestRepository;
+    private final FishRepository fishRepository;
+    private final IndustrialStuffRepository industrialStuffRepository;
+    private final DeliveryServiceHelper deliveryServiceHelper;
 
     /**
      * Get all orders assigned to a specific delivery person
@@ -111,6 +114,7 @@ public class DeliveryService {
         // }
 
         // Update order status - convert string to enum
+        Order.OrderStatus previousStatus = order.getOrderStatus();
         try {
             Order.OrderStatus status = Order.OrderStatus.valueOf(updateDTO.getNewStatus().toUpperCase());
             order.setOrderStatus(status);
@@ -119,6 +123,11 @@ public class DeliveryService {
             if (status == Order.OrderStatus.CANCELED) {
                 order.setCancellationReason(updateDTO.getCancellationReason());
                 order.setCancelledDateTime(LocalDateTime.now());
+            }
+            
+            // If order is being marked as DELIVERED, update sold counts
+            if (status == Order.OrderStatus.DELIVERED && previousStatus != Order.OrderStatus.DELIVERED) {
+                deliveryServiceHelper.updateSoldCounts(order);
             }
         } catch (IllegalArgumentException e) {
             // If invalid status, default to ORDER_PENDING
@@ -155,7 +164,13 @@ public class DeliveryService {
         */
 
         // Mark as delivered
+        Order.OrderStatus previousStatus = order.getOrderStatus();
         order.setOrderStatus(Order.OrderStatus.DELIVERED);
+
+        // Update sold counts for products
+        if (previousStatus != Order.OrderStatus.DELIVERED) {
+            deliveryServiceHelper.updateSoldCounts(order);
+        }
 
         Order savedOrder = orderRepository.save(order);
         return convertToOrderDeliveryDTO(savedOrder);
@@ -545,7 +560,13 @@ public class DeliveryService {
         */
 
         // Mark as delivered
+        Order.OrderStatus previousStatus = order.getOrderStatus();
         order.setOrderStatus(Order.OrderStatus.DELIVERED);
+
+        // Update sold counts for products
+        if (previousStatus != Order.OrderStatus.DELIVERED) {
+            deliveryServiceHelper.updateSoldCounts(order);
+        }
 
         Order savedOrder = orderRepository.save(order);
         

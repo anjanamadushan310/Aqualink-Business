@@ -1,8 +1,10 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, Heart, MessageCircle, ShoppingCart, Truck, User } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import ProductReviewsSection from '../common/ProductReviewsSection';
+import apiService from '../../services/apiService';
 
 const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
   const { addToCart, isLoading } = useCart();
@@ -13,6 +15,22 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
   const [isFavorited, setIsFavorited] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [reviewSummary, setReviewSummary] = useState(null);
+
+  // Fetch review summary when component mounts or industrial changes
+  useEffect(() => {
+    const fetchReviewSummary = async () => {
+      if (industrial?.id) {
+        try {
+          const data = await apiService.get(`/product-reviews/product/${industrial.id}/INDUSTRIAL/summary`);
+          setReviewSummary(data);
+        } catch (err) {
+          console.error('Error fetching review summary:', err);
+        }
+      }
+    };
+    fetchReviewSummary();
+  }, [industrial?.id]);
 
   // Function to construct full image URL
   const getImageUrl = useCallback((imagePath) => {
@@ -38,9 +56,9 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
   const productData = useMemo(() => ({
     name: industrial?.name || "Industrial Product",
     price: industrial?.price || 0,
-    rating: industrial?.rating || 0,
+    rating: reviewSummary?.averageRating || industrial?.rating || 0, // Use live review rating
     totalSold: industrial?.soldCount || 0,
-    reviewCount: industrial?.reviewCount || 0,
+    reviewCount: reviewSummary?.totalReviews || industrial?.reviewCount || 0, // Use live review count
     storeReviews: 3778,
     stock: industrial?.stock || 0,
     description: industrial?.description || "No description available",
@@ -48,7 +66,7 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
     category: industrial?.category,
     district: industrial?.district,
     inStock: industrial?.inStock
-  }), [industrial, getImageUrl]);
+  }), [industrial, reviewSummary, getImageUrl]);
 
   // Memoized calculations
   const subtotal = useMemo(() => quantity * productData.price, [quantity, productData.price]);
@@ -351,42 +369,20 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
         </div>
       </section>
 
-      {/* Reviews Section */}
-      <section className="mt-8">
-        <div className="border border-gray-300 rounded-lg p-6 bg-white">
-          <h2 className="text-xl font-semibold mb-4">Ratings & Reviews</h2>
-
-          <div className="flex gap-8 mb-6">
-            <button className="text-blue-600 hover:underline focus:underline">
-              Product reviews ({productData.reviewCount})
-            </button>
-            <button className="text-blue-600 hover:underline focus:underline">
-              Store reviews ({productData.storeReviews.toLocaleString()})
-            </button>
-          </div>
-
-          {/* Sample Review */}
-          <article className="border-t pt-6">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
-                <User className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="font-medium">John Smith</h3>
-                </div>
-                <div className="flex items-center gap-2 mb-3">
-                  <StarRating rating={4.5} />
-                </div>
-                <p className="text-gray-700 leading-relaxed">
-                  Excellent industrial equipment! Very high quality and exactly as described. 
-                  Fast shipping and great customer service. Would definitely buy from this seller again.
-                </p>
-              </div>
-            </div>
-          </article>
-        </div>
-      </section>
+      {/* Reviews Section - View Only */}
+      <ProductReviewsSection 
+        productId={industrial?.id} 
+        productType="INDUSTRIAL"
+        allowReview={false}
+        onReviewUpdate={() => {
+          // Refresh review summary when a review is updated
+          if (industrial?.id) {
+            apiService.get(`/product-reviews/product/${industrial.id}/INDUSTRIAL/summary`)
+              .then(data => setReviewSummary(data))
+              .catch(err => console.error('Error refreshing review summary:', err));
+          }
+        }}
+      />
     </div>
   );
 };

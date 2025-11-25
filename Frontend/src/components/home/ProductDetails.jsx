@@ -1,18 +1,35 @@
-import React, { useState, useCallback, useMemo, useContext } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, Heart, MessageCircle, ShoppingCart, Truck, User } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import ProductReviewsSection from '../common/ProductReviewsSection';
+import apiService from '../../services/apiService';
 
 const ProductDetails = ({ fish, onPurchaseSuccess }) => {
-  const { addToCart, isLoading } = useCart();
-  const { user, token, isAuthenticated } = useAuth();
+  const { addToCart } = useCart();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(fish?.minimumQuantity || 1);
   const [selectedImage, setSelectedImage] = useState(0);
-  const [isFavorited, setIsFavorited] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [reviewSummary, setReviewSummary] = useState(null);
+
+  // Fetch review summary when component mounts or fish changes
+  useEffect(() => {
+    const fetchReviewSummary = async () => {
+      if (fish?.id) {
+        try {
+          const data = await apiService.get(`/product-reviews/product/${fish.id}/FISH/summary`);
+          setReviewSummary(data);
+        } catch (err) {
+          console.error('Error fetching review summary:', err);
+        }
+      }
+    };
+    fetchReviewSummary();
+  }, [fish?.id]);
 
   // Function to construct full image URL
   const getImageUrl = (imagePath) => {
@@ -38,15 +55,15 @@ const ProductDetails = ({ fish, onPurchaseSuccess }) => {
   const productData = useMemo(() => ({
     name: fish?.name || "Fish Product",
     price: fish?.price || 0,
-    rating: fish?.rating || 0, // Dynamic rating from backend
+    rating: reviewSummary?.averageRating || fish?.rating || 0, // Use live review rating
     totalSold: fish?.totalSold || 0, // Dynamic total sold from backend
-    reviewCount: fish?.reviewCount || 0, // Dynamic review count from backend
+    reviewCount: reviewSummary?.totalReviews || fish?.reviewCount || 0, // Use live review count
     storeReviews: 3778, // You can add this to your fish model later
     minQuantity: fish?.minimumQuantity || 1,
     stock: fish?.stock || 0,
     description: fish?.description || "No description available",
     images: fish?.imageUrls?.length > 0 ? fish.imageUrls.map(getImageUrl) : [getImageUrl(null)]
-  }), [fish]);
+  }), [fish, reviewSummary]);
 
   // Memoized calculations
   const subtotal = useMemo(() => quantity * productData.price, [quantity, productData.price]);
@@ -81,10 +98,6 @@ const ProductDetails = ({ fish, onPurchaseSuccess }) => {
 
   const handleImageSelect = useCallback((index) => {
     setSelectedImage(index);
-  }, []);
-
-  const toggleFavorite = useCallback(() => {
-    setIsFavorited(prev => !prev);
   }, []);
 
   const handleAddToCart = useCallback(async () => {
@@ -327,42 +340,20 @@ const ProductDetails = ({ fish, onPurchaseSuccess }) => {
         </div>
       </section>
 
-      {/* Reviews Section */}
-      <section className="mt-8">
-        <div className="border border-gray-300 rounded-lg p-6 bg-white">
-          <h2 className="text-xl font-semibold mb-4">Ratings & Reviews</h2>
-
-          <div className="flex gap-8 mb-6">
-            <button className="text-blue-600 hover:underline focus:underline">
-              Product reviews ({productData.reviewCount})
-            </button>
-            <button className="text-blue-600 hover:underline focus:underline">
-              Store reviews ({productData.storeReviews.toLocaleString()})
-            </button>
-          </div>
-
-          {/* Sample Review */}
-          <article className="border-t pt-6">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
-                <User className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="font-medium">Sarah Johnson</h3>
-                </div>
-                <div className="flex items-center gap-2 mb-3">
-                  <StarRating rating={4.5} />
-                </div>
-                <p className="text-gray-700 leading-relaxed">
-                  Beautiful healthy fish! They arrived in perfect condition and have been thriving in my tank. 
-                  Great coloration and very active. Highly recommend this seller.
-                </p>
-              </div>
-            </div>
-          </article>
-        </div>
-      </section>
+      {/* Reviews Section - View Only */}
+      <ProductReviewsSection 
+        productId={fish?.id} 
+        productType="FISH"
+        allowReview={false}
+        onReviewUpdate={() => {
+          // Refresh review summary when a review is updated
+          if (fish?.id) {
+            apiService.get(`/product-reviews/product/${fish.id}/FISH/summary`)
+              .then(data => setReviewSummary(data))
+              .catch(err => console.error('Error refreshing review summary:', err));
+          }
+        }}
+      />
     </div>
   );
 };

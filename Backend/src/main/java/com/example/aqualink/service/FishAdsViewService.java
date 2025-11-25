@@ -116,9 +116,9 @@ public class FishAdsViewService {
         Double averageRating = reviewRepository.findAverageRatingByProductId(fish.getId());
         dto.setRating(averageRating != null ? averageRating : 0.0);
 
-        // Calculate total sold
-        Long totalSold = orderItemRepository.findTotalSoldByProductId(fish.getId());
-        dto.setTotalSold(totalSold != null ? totalSold : 0L);
+        // Get sold count from fish entity
+        Integer soldCount = fish.getSoldCount();
+        dto.setTotalSold(soldCount != null ? soldCount.longValue() : 0L);
 
         // Calculate review count
         Long reviewCount = reviewRepository.countReviewsByProductId(fish.getId());
