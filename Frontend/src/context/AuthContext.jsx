@@ -16,6 +16,13 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
+  const [activeRole, setActiveRoleState] = useState(localStorage.getItem('activeRole') || null);
+
+  // Set active role and persist to localStorage
+  const setActiveRole = (role) => {
+    localStorage.setItem('activeRole', role);
+    setActiveRoleState(role);
+  };
 
   // Check if user is authenticated on app load
   useEffect(() => {
@@ -33,6 +40,17 @@ export const AuthProvider = ({ children }) => {
           console.log('Parsed user:', parsedUser);
           console.log('User roles:', parsedUser.roles);
           setUser(parsedUser);
+          
+          // Set active role if not already set
+          if (!activeRole && parsedUser.roles && parsedUser.roles.length > 0) {
+            const storedActiveRole = localStorage.getItem('activeRole');
+            if (storedActiveRole && parsedUser.roles.includes(storedActiveRole)) {
+              setActiveRoleState(storedActiveRole);
+            } else {
+              // Default to first role
+              setActiveRole(parsedUser.roles[0]);
+            }
+          }
         } catch (error) {
           console.error('Error parsing user data:', error);
           logout();
@@ -126,6 +144,11 @@ export const AuthProvider = ({ children }) => {
 
       setToken(authToken);
       setUser(userData);
+      
+      // Set default active role to first role
+      if (roleNames && roleNames.length > 0) {
+        setActiveRole(roleNames[0]);
+      }
 
       console.log('=== USER DATA STORED ===');
       console.log('Token stored:', !!localStorage.getItem('token'));
@@ -145,6 +168,7 @@ export const AuthProvider = ({ children }) => {
     // Clear authentication data
     localStorage.removeItem('token');
     localStorage.removeItem('user');
+    localStorage.removeItem('activeRole');
     
     // Clear shopping/ordering related data
     localStorage.removeItem('aqualink_order_data');
@@ -200,7 +224,9 @@ export const AuthProvider = ({ children }) => {
     hasRole,
     isAuthenticated,
     refreshUserData,
-    loading
+    loading,
+    activeRole,
+    setActiveRole
   };
 
   return (

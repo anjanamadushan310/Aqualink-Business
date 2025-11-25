@@ -4,6 +4,10 @@ import Sidebar from '../../components/industrialstuffseller/Sidebar';
 import IndustrialStuffOrder from '../../components/industrialstuffseller/IndustrialStuffOrders';
 import IndustrialStuffFishStockManagement from '../../components/industrialstuffseller/IndustrialStuffStockManagement';
 import IndustrialStuffForm from '../../components/industrialstuffseller/IndustrialStuffForm';
+// Reuse farm owner order components for industrial seller
+import FarmOwnerOrderManagement from '../../components/farmowner/FarmOwnerOrderManagement';
+import OrderHistory from '../../components/farmowner/OrderHistory';
+import CanceledOrders from '../../components/farmowner/CanceledOrders';
 import DashboardFooter from '../../components/common/DashboardFooter';
 import RoleBasedRoute from '../../components/common/RoleBasedRoute';
 import { ROLES } from '../../utils/roleUtils';
@@ -24,10 +28,20 @@ const IndustrialStuffSellerDashboard = () => {
       <div className="lg:ml-64 flex flex-col flex-1">
         <main className="p-4 lg:p-8 flex-1">
           <Routes>
-            <Route index element={<Navigate to="orders" replace />} />
-            <Route path="orders" element={
+            <Route index element={<Navigate to="sales-orders" replace />} />
+            <Route path="sales-orders" element={
               <RoleBasedRoute allowedRoles={[ROLES.INDUSTRIAL_STUFF_SELLER]}>
-                <IndustrialStuffOrder />
+                <FarmOwnerOrderManagement />
+              </RoleBasedRoute>
+            } />
+            <Route path="order-history" element={
+              <RoleBasedRoute allowedRoles={[ROLES.INDUSTRIAL_STUFF_SELLER]}>
+                <OrderHistory />
+              </RoleBasedRoute>
+            } />
+            <Route path="canceled-orders" element={
+              <RoleBasedRoute allowedRoles={[ROLES.INDUSTRIAL_STUFF_SELLER]}>
+                <CanceledOrders />
               </RoleBasedRoute>
             } />
             <Route path="stock-management" element={

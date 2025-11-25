@@ -341,36 +341,70 @@ public class DeliveryService {
      * Get earnings data for delivery person
      */
     public SimpleEarningsDTO getEarnings(String deliveryPersonNic) {
-        // TODO: Implement proper earnings calculation when delivery quote system is ready
-        // For now, return zero earnings since the new Order entity doesn't have deliveryFee
-        // and we don't have the delivery person assignment in the current structure
+        // Find delivery person user
+        Optional<User> deliveryPersonOpt = userRepository.findByNicNumber(deliveryPersonNic);
+        if (deliveryPersonOpt.isEmpty()) {
+            return new SimpleEarningsDTO(BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO, 0, 0);
+        }
+        User deliveryPerson = deliveryPersonOpt.get();
         
-        // Get all orders (for now, we can't filter by delivery person due to new structure)
-        List<Order> allOrders = orderRepository.findAll();
+        // Get all ACCEPTED delivery quotes for this delivery person
+        List<DeliveryQuote> acceptedQuotes = deliveryQuoteRepository.findAll().stream()
+                .filter(quote -> quote.getDeliveryPerson().getId().equals(deliveryPerson.getId()))
+                .filter(quote -> quote.getStatus() == DeliveryQuote.QuoteStatus.ACCEPTED)
+                .collect(Collectors.toList());
         
-        // Filter delivered orders
-        List<Order> deliveredOrders = allOrders.stream()
+        // Get order IDs from quote requests
+        List<Long> orderIds = acceptedQuotes.stream()
+                .map(quote -> quote.getQuoteRequest().getOrderId())
+                .collect(Collectors.toList());
+        
+        // Get delivered orders for these quotes
+        List<Order> deliveredOrders = orderIds.stream()
+                .map(orderId -> orderRepository.findById(orderId))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
                 .filter(order -> order.getOrderStatus() == Order.OrderStatus.DELIVERED)
                 .collect(Collectors.toList());
         
-        // Since we don't have delivery fees in new structure, return zero for now
-        BigDecimal totalEarnings = BigDecimal.ZERO;
-                
-        // Calculate current month earnings (also zero for now)
-        LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
-        BigDecimal monthlyEarnings = deliveredOrders.stream()
-                .filter(order -> order.getOrderDateTime() != null && 
-                               (order.getOrderDateTime().toLocalDate().isAfter(startOfMonth) || 
-                                order.getOrderDateTime().toLocalDate().isEqual(startOfMonth)))
-                .map(order -> BigDecimal.ZERO) // No delivery fee in new structure
+        // Create a set of delivered order IDs for quick lookup
+        java.util.Set<Long> deliveredOrderIds = deliveredOrders.stream()
+                .map(Order::getId)
+                .collect(Collectors.toSet());
+        
+        // Calculate total earnings from delivered orders
+        BigDecimal totalEarnings = acceptedQuotes.stream()
+                .filter(quote -> deliveredOrderIds.contains(quote.getQuoteRequest().getOrderId()))
+                .map(DeliveryQuote::getDeliveryFee)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
-                
-        // Calculate today's earnings (also zero for now)
+        
+        // Calculate current month earnings
+        LocalDate startOfMonth = LocalDate.now().withDayOfMonth(1);
+        BigDecimal monthlyEarnings = acceptedQuotes.stream()
+                .filter(quote -> {
+                    Long orderId = quote.getQuoteRequest().getOrderId();
+                    return deliveredOrderIds.contains(orderId) && 
+                           deliveredOrders.stream()
+                                   .filter(order -> order.getId().equals(orderId))
+                                   .anyMatch(order -> order.getOrderDateTime() != null && 
+                                           (order.getOrderDateTime().toLocalDate().isAfter(startOfMonth) || 
+                                            order.getOrderDateTime().toLocalDate().isEqual(startOfMonth)));
+                })
+                .map(DeliveryQuote::getDeliveryFee)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        
+        // Calculate today's earnings
         LocalDate today = LocalDate.now();
-        BigDecimal dailyEarnings = deliveredOrders.stream()
-                .filter(order -> order.getOrderDateTime() != null && 
-                               order.getOrderDateTime().toLocalDate().isEqual(today))
-                .map(order -> BigDecimal.ZERO) // No delivery fee in new structure
+        BigDecimal dailyEarnings = acceptedQuotes.stream()
+                .filter(quote -> {
+                    Long orderId = quote.getQuoteRequest().getOrderId();
+                    return deliveredOrderIds.contains(orderId) && 
+                           deliveredOrders.stream()
+                                   .filter(order -> order.getId().equals(orderId))
+                                   .anyMatch(order -> order.getOrderDateTime() != null && 
+                                           order.getOrderDateTime().toLocalDate().isEqual(today));
+                })
+                .map(DeliveryQuote::getDeliveryFee)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         
         int totalDeliveries = deliveredOrders.size();
@@ -379,7 +413,11 @@ public class DeliveryService {
                                (order.getOrderDateTime().toLocalDate().isAfter(startOfMonth) || 
                                 order.getOrderDateTime().toLocalDate().isEqual(startOfMonth)))
                 .count();
-                
+        
+        System.out.println("✓ Calculated earnings for delivery person " + deliveryPersonNic + 
+                ": Total=" + totalEarnings + ", Monthly=" + monthlyEarnings + 
+                ", Daily=" + dailyEarnings + ", Deliveries=" + totalDeliveries);
+        
         return new SimpleEarningsDTO(
                 totalEarnings,
                 monthlyEarnings,

@@ -7,7 +7,6 @@ const IndustrialStuffForm = () => {
     category: '',
     stock: '',
     price: '',
-    inStock: true,
   });
 
   const [selectedImages, setSelectedImages] = useState([]);
@@ -69,8 +68,7 @@ const IndustrialStuffForm = () => {
       ...formData,
       nicNumber: nicNumber,
       stock: parseInt(formData.stock),
-      price: parseFloat(formData.price),
-      inStock: formData.inStock
+      price: parseFloat(formData.price)
     };
 
     // Append industrialStuffRequest as JSON
@@ -106,7 +104,6 @@ const IndustrialStuffForm = () => {
           category: '',
           stock: '',
           price: '',
-          inStock: true,
         });
         setSelectedImages([]);
         setImagePreviews([]);
@@ -222,21 +219,6 @@ const IndustrialStuffForm = () => {
               placeholder="Price in LKR"
             />
           </div>
-        </div>
-
-        {/* In Stock Checkbox */}
-        <div className="flex items-center">
-          <input
-            type="checkbox"
-            id="inStock"
-            name="inStock"
-            checked={formData.inStock}
-            onChange={handleInputChange}
-            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-          />
-          <label htmlFor="inStock" className="ml-2 block text-sm text-gray-700">
-            Currently in stock
-          </label>
         </div>
 
         {/* Image Upload */}

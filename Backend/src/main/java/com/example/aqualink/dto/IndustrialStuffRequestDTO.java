@@ -11,7 +11,6 @@ public class IndustrialStuffRequestDTO {
     private String nicNumber;
     private Integer stock;
     private Double price;
-    private Boolean inStock = true;
     private Long userId;
     private MultipartFile[] images;
 }

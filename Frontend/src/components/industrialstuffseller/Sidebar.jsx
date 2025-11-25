@@ -10,14 +10,18 @@ import {
   ShoppingBagIcon,
   PhotoIcon,
   XMarkIcon,
-  ClipboardDocumentListIcon
+  ClipboardDocumentListIcon,
+  ClockIcon,
+  XCircleIcon
 } from '@heroicons/react/24/outline';
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const menuItems = [
-    { id: 'industrial-stuff-orders', label: 'Orders', icon: ClipboardDocumentListIcon, path: '/dashboard/orders' },
+    { id: 'sales-orders', label: 'Sales Orders', icon: ClipboardDocumentListIcon, path: '/dashboard/sales-orders' },
+    { id: 'order-history', label: 'Order History', icon: ClockIcon, path: '/dashboard/order-history' },
+    { id: 'canceled-orders', label: 'Canceled Orders', icon: XCircleIcon, path: '/dashboard/canceled-orders' },
     { id: 'industrial-stuff-Stock-management', label: 'Stock Management', icon: ShoppingBagIcon, path: '/dashboard/stock-management' },
-    { id: 'industrial-stuff-form', label: 'Create Ads', icon: ShoppingBagIcon, path: '/dashboard/create-ads' },
+    { id: 'industrial-stuff-form', label: 'Create Ads', icon: CubeIcon, path: '/dashboard/create-ads' },
   ];
 
   return (

@@ -104,9 +104,9 @@ public class DatabaseSeeder {
         createUser(9L, "200312345678", "Anjana Madushan", "anjana@service.com", 
                    "+94771234575", encodedPassword, Role.SERVICE_PROVIDER);
         
-        // Industrial Stuff Sellers
+        // Industrial Stuff Sellers (Mahesh is also a Farm Owner)
         createUser(10L, "200412345678", "Mahesh Gunasekara", "mahesh@industrial.com", 
-                   "+94771234576", encodedPassword, Role.INDUSTRIAL_STUFF_SELLER);
+                   "+94771234576", encodedPassword, Role.INDUSTRIAL_STUFF_SELLER, Role.FARM_OWNER);
         createUser(11L, "200512345678", "Tharaka Bandara", "tharaka@industrial.com", 
                    "+94771234577", encodedPassword, Role.INDUSTRIAL_STUFF_SELLER);
         
@@ -222,6 +222,7 @@ public class DatabaseSeeder {
         
         User sunil = userRepository.findByEmail("sunil@farm.com").orElse(null);
         User kamal = userRepository.findByEmail("kamal@farm.com").orElse(null);
+        User mahesh = userRepository.findByEmail("mahesh@industrial.com").orElse(null);
         
         if (sunil != null) {
             createFishAd(sunil, "Tilapia", "Fresh Tilapia fish, farm-raised with organic feed. Perfect for grilling and curries.", 
@@ -247,6 +248,12 @@ public class DatabaseSeeder {
                         800, 200.00, 5);
             createFishAd(kamal, "Barb Fish", "Active and hardy Barb fish species. Great for community tanks.", 
                         600, 180.00, 10);
+        }
+        
+        // Mahesh also sells fish (he's both industrial seller and farm owner)
+        if (mahesh != null) {
+            createFishAd(mahesh, "Guppy Fish", "Premium quality Guppy fish in vibrant colors. Perfect for aquariums and breeding.", 
+                        1500, 25.00, 10);
         }
         
         log.info("✅ Created fish ads");
