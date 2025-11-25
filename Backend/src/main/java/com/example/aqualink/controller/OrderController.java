@@ -18,12 +18,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.aqualink.dto.DeliveredOrderItemDTO;
+import com.example.aqualink.entity.Fish;
+import com.example.aqualink.entity.IndustrialStuff;
 import com.example.aqualink.entity.Order;
 import com.example.aqualink.entity.OrderItem;
 import com.example.aqualink.entity.User;
+import com.example.aqualink.repository.FishRepository;
+import com.example.aqualink.repository.IndustrialStuffRepository;
 import com.example.aqualink.repository.OrderRepository;
 import com.example.aqualink.repository.ProductReviewRepository;
 import com.example.aqualink.repository.UserRepository;
+import com.example.aqualink.service.DeliveryServiceHelper;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -37,6 +42,15 @@ public class OrderController {
 
     @Autowired
     private ProductReviewRepository productReviewRepository;
+
+    @Autowired
+    private FishRepository fishRepository;
+
+    @Autowired
+    private IndustrialStuffRepository industrialStuffRepository;
+
+    @Autowired
+    private DeliveryServiceHelper deliveryServiceHelper;
 
     /**
      * Get all orders for the logged-in buyer (customer who placed orders)
@@ -112,7 +126,14 @@ public class OrderController {
             }
 
             String newStatus = request.get("status");
-            order.setOrderStatus(Order.OrderStatus.valueOf(newStatus));
+            Order.OrderStatus previousStatus = order.getOrderStatus();
+            Order.OrderStatus newOrderStatus = Order.OrderStatus.valueOf(newStatus);
+            order.setOrderStatus(newOrderStatus);
+            
+            // Update sold counts if order is being marked as DELIVERED
+            if (newOrderStatus == Order.OrderStatus.DELIVERED && previousStatus != Order.OrderStatus.DELIVERED) {
+                deliveryServiceHelper.updateSoldCounts(order);
+            }
             
             Order updatedOrder = orderRepository.save(order);
             System.out.println("Order " + orderId + " status updated to " + newStatus);
@@ -266,6 +287,7 @@ public class OrderController {
 
     /**
      * Get all delivered order items for shop owner with review status
+     * Shop owner can review products they purchased (as a buyer)
      */
     @GetMapping("/delivered-items")
     @PreAuthorize("hasRole('SHOP_OWNER')")
@@ -275,17 +297,22 @@ public class OrderController {
             User shopOwner = userRepository.findByEmail(email)
                     .orElseThrow(() -> new RuntimeException("User not found"));
 
-            // Get all delivered orders for this shop owner
+            System.out.println("Fetching delivered items for shop owner: " + email + " (ID: " + shopOwner.getId() + ")");
+
+            // Get all delivered orders where this shop owner is the buyer
             List<Order> deliveredOrders = orderRepository.findAll().stream()
-                    .filter(order -> order.getBuyerUser().getId().equals(shopOwner.getId()))
+                    .filter(order -> order.getBuyerUser() != null && order.getBuyerUser().getId().equals(shopOwner.getId()))
                     .filter(order -> order.getOrderStatus() == Order.OrderStatus.DELIVERED)
                     .toList();
+
+            System.out.println("Found " + deliveredOrders.size() + " delivered orders for this shop owner");
 
             List<DeliveredOrderItemDTO> deliveredItems = new ArrayList<>();
 
             for (Order order : deliveredOrders) {
+                System.out.println("Processing order ID: " + order.getId() + " with " + order.getOrderItems().size() + " items");
                 for (OrderItem item : order.getOrderItems()) {
-                    // Check if this item has been reviewed
+                    // Check if this item has been reviewed by the shop owner
                     boolean hasReview = productReviewRepository.existsByUserIdAndProductIdAndProductType(
                         shopOwner.getId(), 
                         item.getProductId(), 
@@ -315,12 +342,15 @@ public class OrderController {
                     dto.setReviewId(reviewId);
 
                     deliveredItems.add(dto);
+                    System.out.println("Added item: " + item.getProductName() + " (hasReview: " + hasReview + ")");
                 }
             }
 
+            System.out.println("Returning " + deliveredItems.size() + " delivered items");
             return ResponseEntity.ok(deliveredItems);
         } catch (Exception e) {
             System.err.println("Error fetching delivered items: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest().build();
         }
     }

@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, Heart, MessageCircle, ShoppingCart, Truck, User } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import ProductReviewsSection from '../common/ProductReviewsSection';
+import apiService from '../../services/apiService';
 
 const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
   const { addToCart, isLoading } = useCart();
@@ -14,6 +15,22 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
   const [isFavorited, setIsFavorited] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [reviewSummary, setReviewSummary] = useState(null);
+
+  // Fetch review summary when component mounts or industrial changes
+  useEffect(() => {
+    const fetchReviewSummary = async () => {
+      if (industrial?.id) {
+        try {
+          const data = await apiService.get(`/product-reviews/product/${industrial.id}/INDUSTRIAL/summary`);
+          setReviewSummary(data);
+        } catch (err) {
+          console.error('Error fetching review summary:', err);
+        }
+      }
+    };
+    fetchReviewSummary();
+  }, [industrial?.id]);
 
   // Function to construct full image URL
   const getImageUrl = useCallback((imagePath) => {
@@ -39,9 +56,9 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
   const productData = useMemo(() => ({
     name: industrial?.name || "Industrial Product",
     price: industrial?.price || 0,
-    rating: industrial?.rating || 0,
+    rating: reviewSummary?.averageRating || industrial?.rating || 0, // Use live review rating
     totalSold: industrial?.soldCount || 0,
-    reviewCount: industrial?.reviewCount || 0,
+    reviewCount: reviewSummary?.totalReviews || industrial?.reviewCount || 0, // Use live review count
     storeReviews: 3778,
     stock: industrial?.stock || 0,
     description: industrial?.description || "No description available",
@@ -49,7 +66,7 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
     category: industrial?.category,
     district: industrial?.district,
     inStock: industrial?.inStock
-  }), [industrial, getImageUrl]);
+  }), [industrial, reviewSummary, getImageUrl]);
 
   // Memoized calculations
   const subtotal = useMemo(() => quantity * productData.price, [quantity, productData.price]);
@@ -357,6 +374,14 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
         productId={industrial?.id} 
         productType="INDUSTRIAL"
         allowReview={false}
+        onReviewUpdate={() => {
+          // Refresh review summary when a review is updated
+          if (industrial?.id) {
+            apiService.get(`/product-reviews/product/${industrial.id}/INDUSTRIAL/summary`)
+              .then(data => setReviewSummary(data))
+              .catch(err => console.error('Error refreshing review summary:', err));
+          }
+        }}
       />
     </div>
   );

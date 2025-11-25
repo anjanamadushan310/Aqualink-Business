@@ -1,19 +1,35 @@
-import React, { useState, useCallback, useMemo, useContext } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Star, Heart, MessageCircle, ShoppingCart, Truck, User } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import ProductReviewsSection from '../common/ProductReviewsSection';
+import apiService from '../../services/apiService';
 
 const ProductDetails = ({ fish, onPurchaseSuccess }) => {
-  const { addToCart, isLoading } = useCart();
-  const { user, token, isAuthenticated } = useAuth();
+  const { addToCart } = useCart();
+  const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(fish?.minimumQuantity || 1);
   const [selectedImage, setSelectedImage] = useState(0);
-  const [isFavorited, setIsFavorited] = useState(false);
   const [addingToCart, setAddingToCart] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
+  const [reviewSummary, setReviewSummary] = useState(null);
+
+  // Fetch review summary when component mounts or fish changes
+  useEffect(() => {
+    const fetchReviewSummary = async () => {
+      if (fish?.id) {
+        try {
+          const data = await apiService.get(`/product-reviews/product/${fish.id}/FISH/summary`);
+          setReviewSummary(data);
+        } catch (err) {
+          console.error('Error fetching review summary:', err);
+        }
+      }
+    };
+    fetchReviewSummary();
+  }, [fish?.id]);
 
   // Function to construct full image URL
   const getImageUrl = (imagePath) => {
@@ -39,15 +55,15 @@ const ProductDetails = ({ fish, onPurchaseSuccess }) => {
   const productData = useMemo(() => ({
     name: fish?.name || "Fish Product",
     price: fish?.price || 0,
-    rating: fish?.rating || 0, // Dynamic rating from backend
+    rating: reviewSummary?.averageRating || fish?.rating || 0, // Use live review rating
     totalSold: fish?.totalSold || 0, // Dynamic total sold from backend
-    reviewCount: fish?.reviewCount || 0, // Dynamic review count from backend
+    reviewCount: reviewSummary?.totalReviews || fish?.reviewCount || 0, // Use live review count
     storeReviews: 3778, // You can add this to your fish model later
     minQuantity: fish?.minimumQuantity || 1,
     stock: fish?.stock || 0,
     description: fish?.description || "No description available",
     images: fish?.imageUrls?.length > 0 ? fish.imageUrls.map(getImageUrl) : [getImageUrl(null)]
-  }), [fish]);
+  }), [fish, reviewSummary]);
 
   // Memoized calculations
   const subtotal = useMemo(() => quantity * productData.price, [quantity, productData.price]);
@@ -82,10 +98,6 @@ const ProductDetails = ({ fish, onPurchaseSuccess }) => {
 
   const handleImageSelect = useCallback((index) => {
     setSelectedImage(index);
-  }, []);
-
-  const toggleFavorite = useCallback(() => {
-    setIsFavorited(prev => !prev);
   }, []);
 
   const handleAddToCart = useCallback(async () => {
@@ -333,6 +345,14 @@ const ProductDetails = ({ fish, onPurchaseSuccess }) => {
         productId={fish?.id} 
         productType="FISH"
         allowReview={false}
+        onReviewUpdate={() => {
+          // Refresh review summary when a review is updated
+          if (fish?.id) {
+            apiService.get(`/product-reviews/product/${fish.id}/FISH/summary`)
+              .then(data => setReviewSummary(data))
+              .catch(err => console.error('Error refreshing review summary:', err));
+          }
+        }}
       />
     </div>
   );

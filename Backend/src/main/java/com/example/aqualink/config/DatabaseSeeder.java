@@ -38,6 +38,7 @@ public class DatabaseSeeder {
     private final OrderItemRepository orderItemRepository;
     private final DeliveryQuoteRequestRepository deliveryQuoteRequestRepository;
     private final DeliveryQuoteRepository deliveryQuoteRepository;
+    private final ProductReviewRepository productReviewRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Bean
@@ -61,6 +62,9 @@ public class DatabaseSeeder {
             
             // Seed orders independently (has its own check)
             seedOrders();
+            
+            // Seed product reviews (after orders)
+            seedProductReviews();
         };
     }
 
@@ -1245,5 +1249,205 @@ public class DatabaseSeeder {
         quote.setAcceptedAt(LocalDateTime.now());
         quote.setValidUntil(LocalDateTime.now().plusDays(7));
         return deliveryQuoteRepository.save(quote);
+    }
+
+    @Transactional
+    public void seedProductReviews() {
+        // Only seed if no reviews exist
+        if (productReviewRepository.count() > 0) {
+            log.info("ℹ️ Product reviews already exist, skipping seeding...");
+            return;
+        }
+
+        log.info("Seeding product reviews...");
+
+        // Get orders - try delivered first, then any order
+        List<Order> deliveredOrders = orderRepository.findAll().stream()
+            .filter(o -> o.getOrderStatus() == Order.OrderStatus.DELIVERED)
+            .toList();
+
+        Order order;
+        if (deliveredOrders.isEmpty()) {
+            log.warn("⚠️ No delivered orders found. Looking for any order to mark as delivered...");
+            List<Order> allOrders = orderRepository.findAll();
+            
+            if (allOrders.isEmpty()) {
+                log.error("❌ No orders found at all. Cannot seed reviews.");
+                return;
+            }
+            
+            // Take the first order and mark it as delivered
+            order = allOrders.get(0);
+            order.setOrderStatus(Order.OrderStatus.DELIVERED);
+            order = orderRepository.save(order);
+            log.info("✓ Marked order {} as DELIVERED", order.getId());
+            
+            // Update sold counts for this delivered order
+            updateSoldCountsForOrder(order);
+        } else {
+            log.info("Found {} delivered orders", deliveredOrders.size());
+            order = deliveredOrders.get(0);
+        }
+
+        User buyer = order.getBuyerUser();
+        // Eagerly load the buyer to avoid LazyInitializationException
+        if (buyer != null) {
+            buyer = userRepository.findById(buyer.getId()).orElse(buyer);
+        }
+        
+        log.info("Creating reviews for buyer: {} (ID: {})", 
+            buyer != null ? buyer.getName() : "Unknown", 
+            buyer != null ? buyer.getId() : "N/A");
+
+        List<Fish> allFish = fishRepository.findAll();
+        List<IndustrialStuff> allIndustrial = industrialStuffRepository.findAll();
+
+        int reviewCount = 0;
+
+        // Create reviews for the buyer of the delivered order
+        // Review for Tilapia
+        if (allFish.size() > 0) {
+            Fish tilapia = allFish.stream()
+                .filter(f -> f.getName().contains("Tilapia"))
+                .findFirst()
+                .orElse(allFish.get(0));
+            
+            createReview(buyer, tilapia.getId(), "FISH", tilapia.getName(), 
+                5, "Excellent quality fish! Very healthy and active. Delivered on time and well-packaged.", 
+                order);
+            reviewCount++;
+        }
+
+        // Review for Catfish
+        if (allFish.size() > 1) {
+            Fish catfish = allFish.stream()
+                .filter(f -> f.getName().contains("Catfish"))
+                .findFirst()
+                .orElse(allFish.get(1));
+            
+            createReview(buyer, catfish.getId(), "FISH", catfish.getName(), 
+                4, "Good quality catfish. Slightly smaller than expected but healthy and growing well.", 
+                order);
+            reviewCount++;
+        }
+
+        // Review for Carp
+        if (allFish.size() > 2) {
+            Fish carp = allFish.stream()
+                .filter(f -> f.getName().contains("Carp"))
+                .findFirst()
+                .orElse(allFish.get(2));
+            
+            createReview(buyer, carp.getId(), "FISH", carp.getName(), 
+                5, "Perfect condition! The carp are beautiful and adapting well to the pond.", 
+                order);
+            reviewCount++;
+        }
+
+        // Review for Gourami
+        if (allFish.size() > 3) {
+            Fish gourami = allFish.stream()
+                .filter(f -> f.getName().contains("Gourami"))
+                .findFirst()
+                .orElse(allFish.get(3));
+            
+            createReview(buyer, gourami.getId(), "FISH", gourami.getName(), 
+                5, "Amazing fish! Very vibrant colors and excellent health. Highly recommend this seller.", 
+                order);
+            reviewCount++;
+        }
+
+        // Review for Fingerlings
+        if (allFish.size() > 4) {
+            Fish fingerlings = allFish.stream()
+                .filter(f -> f.getName().contains("Fingerling"))
+                .findFirst()
+                .orElse(allFish.get(4));
+            
+            createReview(buyer, fingerlings.getId(), "FISH", fingerlings.getName(), 
+                4, "Good survival rate. Fingerlings are healthy and growing fast. Great for stocking ponds.", 
+                order);
+            reviewCount++;
+        }
+
+        // Review for Koi Fish
+        if (allFish.size() > 5) {
+            Fish koi = allFish.stream()
+                .filter(f -> f.getName().contains("Koi"))
+                .findFirst()
+                .orElse(allFish.get(Math.min(5, allFish.size() - 1)));
+            
+            createReview(buyer, koi.getId(), "FISH", koi.getName(), 
+                5, "Stunning koi! Worth every rupee. Packaging was professional and fish arrived in perfect condition.", 
+                order);
+            reviewCount++;
+        }
+
+        // Reviews for Industrial products
+        if (!allIndustrial.isEmpty()) {
+            IndustrialStuff industrial1 = allIndustrial.get(0);
+            createReview(buyer, industrial1.getId(), "INDUSTRIAL", industrial1.getName(), 
+                5, "High quality product. Exactly as described. Very satisfied with this purchase.", 
+                order);
+            reviewCount++;
+        }
+
+        if (allIndustrial.size() > 1) {
+            IndustrialStuff industrial2 = allIndustrial.get(1);
+            createReview(buyer, industrial2.getId(), "INDUSTRIAL", industrial2.getName(), 
+                4, "Good quality and durable. Installation was straightforward. Good value for money.", 
+                order);
+            reviewCount++;
+        }
+
+        if (allIndustrial.size() > 2) {
+            IndustrialStuff industrial3 = allIndustrial.get(2);
+            createReview(buyer, industrial3.getId(), "INDUSTRIAL", industrial3.getName(), 
+                5, "Excellent product! Exceeded my expectations. Will definitely order again.", 
+                order);
+            reviewCount++;
+        }
+
+        log.info("✅ Created {} product reviews", reviewCount);
+    }
+
+    private void createReview(User user, Long productId, String productType, String productName, 
+                             int rating, String comment, Order order) {
+        ProductReview review = new ProductReview();
+        review.setUser(user);
+        review.setProductId(productId);
+        review.setProductType(productType);
+        review.setProductName(productName);
+        review.setRating(rating);
+        review.setComment(comment);
+        review.setOrder(order);
+        review.setVerifiedPurchase(true);
+        productReviewRepository.save(review);
+        log.info("  ✓ Created review: {} stars for {} by {}", rating, productName, user.getName());
+    }
+    
+    /**
+     * Update sold counts for products in a delivered order
+     */
+    private void updateSoldCountsForOrder(Order order) {
+        for (OrderItem item : order.getOrderItems()) {
+            if ("FISH".equals(item.getProductType())) {
+                fishRepository.findById(item.getProductId()).ifPresent(fish -> {
+                    int currentSold = fish.getSoldCount() != null ? fish.getSoldCount() : 0;
+                    fish.setSoldCount(currentSold + item.getQuantity());
+                    fishRepository.save(fish);
+                    log.info("  ✓ Updated sold count for Fish '{}' #{}: +{} = {}", 
+                        fish.getName(), fish.getId(), item.getQuantity(), fish.getSoldCount());
+                });
+            } else if ("INDUSTRIAL".equals(item.getProductType())) {
+                industrialStuffRepository.findById(item.getProductId()).ifPresent(industrial -> {
+                    int currentSold = industrial.getSoldCount() != null ? industrial.getSoldCount() : 0;
+                    industrial.setSoldCount(currentSold + item.getQuantity());
+                    industrialStuffRepository.save(industrial);
+                    log.info("  ✓ Updated sold count for Industrial '{}' #{}: +{} = {}", 
+                        industrial.getName(), industrial.getId(), item.getQuantity(), industrial.getSoldCount());
+                });
+            }
+        }
     }
 }

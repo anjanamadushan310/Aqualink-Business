@@ -5,7 +5,7 @@ import ReviewForm from '../common/ReviewForm';
 import apiService from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
 
-const ProductReviewsSection = ({ productId, productType, allowReview = true }) => {
+const ProductReviewsSection = ({ productId, productType, allowReview = true, onReviewUpdate }) => {
   const { user } = useAuth();
   const [reviews, setReviews] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -15,19 +15,37 @@ const ProductReviewsSection = ({ productId, productType, allowReview = true }) =
 
   const fetchReviews = useCallback(async () => {
     try {
+      console.log('Fetching reviews for:', productId, productType);
       const response = await apiService.get(`/product-reviews/product/${productId}/${productType}`);
-      setReviews(response.data);
+      console.log('Reviews response:', response);
+      console.log('Reviews response.data:', response.data);
+      console.log('Reviews response type:', typeof response);
+      
+      // Handle both response formats
+      const reviewsData = Array.isArray(response) ? response : (response.data || []);
+      console.log('Setting reviews to:', reviewsData);
+      setReviews(reviewsData);
     } catch (err) {
       console.error('Error fetching reviews:', err);
+      console.error('Error details:', err.response?.data);
+      setReviews([]);
     }
   }, [productId, productType]);
 
   const fetchSummary = useCallback(async () => {
     try {
+      console.log('Fetching summary for:', productId, productType);
       const response = await apiService.get(`/product-reviews/product/${productId}/${productType}/summary`);
-      setSummary(response.data);
+      console.log('Summary response:', response);
+      console.log('Summary response.data:', response.data);
+      
+      // Handle both response formats
+      const summaryData = response.data || response;
+      console.log('Setting summary to:', summaryData);
+      setSummary(summaryData);
     } catch (err) {
       console.error('Error fetching summary:', err);
+      console.error('Error details:', err.response?.data);
     } finally {
       setLoading(false);
     }
@@ -55,6 +73,10 @@ const ProductReviewsSection = ({ productId, productType, allowReview = true }) =
     setHasReviewed(true);
     fetchReviews();
     fetchSummary();
+    // Notify parent component to update rating/review count
+    if (onReviewUpdate) {
+      onReviewUpdate();
+    }
   };
 
   const handleDeleteReview = async (reviewId) => {
@@ -67,6 +89,10 @@ const ProductReviewsSection = ({ productId, productType, allowReview = true }) =
       setHasReviewed(false);
       fetchReviews();
       fetchSummary();
+      // Notify parent component to update rating/review count
+      if (onReviewUpdate) {
+        onReviewUpdate();
+      }
     } catch {
       alert('Failed to delete review');
     }
@@ -158,6 +184,7 @@ const ProductReviewsSection = ({ productId, productType, allowReview = true }) =
 
       {/* Reviews List */}
       <div className="space-y-4">
+        {console.log('Rendering reviews, count:', reviews.length, 'reviews:', reviews)}
         {reviews.length > 0 ? (
           reviews.map((review) => (
             <ReviewItem

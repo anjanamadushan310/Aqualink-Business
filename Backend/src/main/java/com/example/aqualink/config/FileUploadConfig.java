@@ -23,9 +23,12 @@ public class FileUploadConfig implements WebMvcConfigurer {
             uploadDirectory.mkdirs();
         }
 
+        // Normalize upload directory path - ensure it ends with /
+        String normalizedUploadDir = uploadDir.endsWith("/") ? uploadDir : uploadDir + "/";
+
         // Handle main upload directory
         registry.addResourceHandler("/uploads/**")
-                .addResourceLocations("file:" + uploadDir);
+                .addResourceLocations("file:" + normalizedUploadDir);
 
         // Create and handle banner uploads directory
         File bannerDirectory = new File(uploadDir + "banners/");
@@ -33,15 +36,19 @@ public class FileUploadConfig implements WebMvcConfigurer {
             bannerDirectory.mkdirs();
         }
         registry.addResourceHandler("/uploads/banners/**")
-                .addResourceLocations("file:" + uploadDir + "banners/");
+                .addResourceLocations("file:" + normalizedUploadDir + "banners/");
 
         // Create and handle industrial images directory
         File industrialImagesDirectory = new File(industrialImagesUploadDir);
         if (!industrialImagesDirectory.exists()) {
             industrialImagesDirectory.mkdirs();
         }
+        // Normalize industrial images path
+        String normalizedIndustrialDir = industrialImagesUploadDir.endsWith("/") 
+            ? industrialImagesUploadDir 
+            : industrialImagesUploadDir + "/";
         registry.addResourceHandler("/uploads/industrial_images/**")
-                .addResourceLocations("file:" + industrialImagesUploadDir);
+                .addResourceLocations("file:" + normalizedIndustrialDir);
 
         // Handle fish images (if needed)
         File fishImagesDirectory = new File(uploadDir + "fish_images/");
@@ -49,7 +56,7 @@ public class FileUploadConfig implements WebMvcConfigurer {
             fishImagesDirectory.mkdirs();
         }
         registry.addResourceHandler("/uploads/fish_images/**")
-                .addResourceLocations("file:" + uploadDir + "fish_images/");
+                .addResourceLocations("file:" + normalizedUploadDir + "fish_images/");
 
         // Handle service images (if needed)
         File serviceImagesDirectory = new File(uploadDir + "service_images/");
@@ -57,7 +64,7 @@ public class FileUploadConfig implements WebMvcConfigurer {
             serviceImagesDirectory.mkdirs();
         }
         registry.addResourceHandler("/uploads/service_images/**")
-                .addResourceLocations("file:" + uploadDir + "service_images/");
+                .addResourceLocations("file:" + normalizedUploadDir + "service_images/");
 
         // Handle blog images
         File blogImagesDirectory = new File(uploadDir + "blog/");
@@ -65,7 +72,7 @@ public class FileUploadConfig implements WebMvcConfigurer {
             blogImagesDirectory.mkdirs();
         }
         registry.addResourceHandler("/uploads/blog/**")
-                .addResourceLocations("file:" + uploadDir + "blog/");
+                .addResourceLocations("file:" + normalizedUploadDir + "blog/");
     }
 }
 

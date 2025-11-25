@@ -285,7 +285,78 @@ const OrdersManagement = () => {
         {activeTab === 'DELIVERED' ? (
           <DeliveredItems />
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">\n            <div className="overflow-x-auto">\n              <table className="min-w-full divide-y divide-gray-200">\n                <thead className="bg-gray-50">\n                  <tr>\n                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">\n                      Order ID\n                    </th>\n                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">\n                      Date\n                    </th>\n                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">\n                      Amount\n                    </th>\n                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">\n                      Status\n                    </th>\n                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">\n                      Actions\n                    </th>\n                  </tr>\n                </thead>\n                <tbody className="bg-white divide-y divide-gray-200">\n                  {filteredOrders.length === 0 ? (\n                    <tr>\n                      <td colSpan="5" className="px-6 py-12 text-center">\n                        <div className="text-gray-400">\n                          <svg className="mx-auto h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">\n                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />\n                          </svg>\n                          <p className="text-lg font-medium">No orders found</p>\n                          <p className="text-sm">\n                            {searchTerm \n                              ? 'Try adjusting your search term' \n                              : `No ${activeTab.toLowerCase().replace('_', ' ')} orders at the moment`}\n                          </p>\n                        </div>\n                      </td>\n                    </tr>\n                  ) : (\n                    filteredOrders.map((order) => (\n                      <tr key={order.id} className="hover:bg-gray-50 transition duration-150">\n                        <td className="px-6 py-4 whitespace-nowrap">\n                          <div className="text-sm font-medium text-blue-600">#{order.id}</div>\n                        </td>\n                        <td className="px-6 py-4 whitespace-nowrap">\n                          <div className="text-sm text-gray-900">{formatDate(order.orderDateTime)}</div>\n                        </td>\n                        <td className="px-6 py-4 whitespace-nowrap">\n                          <div className="text-sm font-bold text-gray-900">\n                            {formatPrice(order.totalAmount)}\n                          </div>\n                        </td>\n                        <td className="px-6 py-4 whitespace-nowrap">\n                          {getStatusBadge(order.orderStatus)}\n                        </td>\n                        <td className="px-6 py-4 whitespace-nowrap text-sm">\n                          <button\n                            onClick={() => setSelectedOrder(order)}\n                            className="text-blue-600 hover:text-blue-900 font-medium"\n                          >\n                            View Details\n                          </button>\n                        </td>\n                      </tr>\n                    ))\n                  )}\n                </tbody>\n              </table>\n            </div>\n          </div>\n        )}
+          <div className="bg-white rounded-lg shadow overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Order ID
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Date
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Amount
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="px-6 py-12 text-center">
+                        <div className="text-gray-400">
+                          <svg className="mx-auto h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                          </svg>
+                          <p className="text-lg font-medium">No orders found</p>
+                          <p className="text-sm">
+                            {searchTerm 
+                              ? 'Try adjusting your search term' 
+                              : `No ${activeTab.toLowerCase().replace('_', ' ')} orders at the moment`}
+                          </p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredOrders.map((order) => (
+                      <tr key={order.id} className="hover:bg-gray-50 transition duration-150">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-blue-600">#{order.id}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{formatDate(order.orderDateTime)}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-bold text-gray-900">
+                            {formatPrice(order.totalAmount)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {getStatusBadge(order.orderStatus)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() => setSelectedOrder(order)}
+                            className="text-blue-600 hover:text-blue-900 font-medium"
+                          >
+                            View Details
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Order Details Modal */}
         {selectedOrder && (

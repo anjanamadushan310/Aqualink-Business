@@ -26,18 +26,30 @@ public class ProductReviewService {
 
     @Transactional
     public ProductReviewResponseDTO createReview(ProductReviewRequestDTO request, Long userId) {
+        System.out.println("=== CREATE REVIEW STARTED ===");
+        System.out.println("User ID: " + userId);
+        System.out.println("Product ID: " + request.getProductId());
+        System.out.println("Product Type: " + request.getProductType());
+        System.out.println("Order ID: " + request.getOrderId());
+        System.out.println("Rating: " + request.getRating());
+        
         // Check if user exists
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+        System.out.println("User found: " + user.getEmail());
 
         // Check if user already reviewed this product
-        if (productReviewRepository.existsByUserIdAndProductIdAndProductType(
-                userId, request.getProductId(), request.getProductType())) {
+        boolean alreadyReviewed = productReviewRepository.existsByUserIdAndProductIdAndProductType(
+                userId, request.getProductId(), request.getProductType());
+        System.out.println("Already reviewed: " + alreadyReviewed);
+        
+        if (alreadyReviewed) {
             throw new RuntimeException("You have already reviewed this product");
         }
 
         // Validate product exists
         String productName = validateAndGetProductName(request.getProductId(), request.getProductType());
+        System.out.println("Product name: " + productName);
 
         // Order ID is required - verify it belongs to this user and contains this product
         if (request.getOrderId() == null) {
@@ -46,27 +58,32 @@ public class ProductReviewService {
 
         Order order = orderRepository.findById(request.getOrderId())
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        System.out.println("Order found: " + order.getId() + ", Status: " + order.getOrderStatus());
 
         // Verify order belongs to the user
         if (!order.getBuyerUser().getId().equals(userId)) {
             throw new RuntimeException("This order does not belong to you");
         }
+        System.out.println("Order belongs to user: OK");
 
         // Verify order status is DELIVERED
         if (order.getOrderStatus() != Order.OrderStatus.DELIVERED) {
             throw new RuntimeException("You can only review products from delivered orders. Current status: " + order.getOrderStatus());
         }
+        System.out.println("Order status is DELIVERED: OK");
 
         // Check if order contains this product
         boolean productInOrder = order.getOrderItems().stream()
                 .anyMatch(item -> item.getProductId().equals(request.getProductId()) 
                         && item.getProductType().equals(request.getProductType()));
+        System.out.println("Product in order: " + productInOrder);
 
         if (!productInOrder) {
             throw new RuntimeException("This product is not in the specified order");
         }
 
         // Create review
+        System.out.println("Creating review entity...");
         ProductReview review = new ProductReview();
         review.setUser(user);
         review.setProductId(request.getProductId());
@@ -74,11 +91,14 @@ public class ProductReviewService {
         review.setProductName(productName);
         review.setRating(request.getRating());
         review.setComment(request.getComment());
-
         review.setOrder(order);
         review.setVerifiedPurchase(true);
 
+        System.out.println("Saving review to database...");
         ProductReview savedReview = productReviewRepository.save(review);
+        System.out.println("Review saved with ID: " + savedReview.getId());
+        System.out.println("=== CREATE REVIEW COMPLETED ===");
+        
         return mapToResponseDTO(savedReview);
     }
 

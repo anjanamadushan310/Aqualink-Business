@@ -18,13 +18,20 @@ const DeliveredItems = () => {
   const fetchDeliveredItems = async () => {
     try {
       setLoading(true);
-      const response = await apiService.get('/orders/delivered-items');
-      setDeliveredItems(response.data);
+      console.log('Fetching delivered items from /orders/delivered-items...');
+      const data = await apiService.get('/orders/delivered-items');
+      console.log('Delivered items data:', data);
+      console.log('Number of items:', data?.length || 0);
+      setDeliveredItems(data || []);
+      console.log('State updated with items');
     } catch (err) {
       setError('Failed to load delivered items');
       console.error('Error fetching delivered items:', err);
+      console.error('Error details:', err.message);
+      setDeliveredItems([]);
     } finally {
       setLoading(false);
+      console.log('Loading set to false');
     }
   };
 
@@ -82,6 +89,7 @@ const DeliveredItems = () => {
         <div className="flex items-center gap-3 mb-6">
           <Package className="w-6 h-6 text-green-600" />
           <h2 className="text-2xl font-bold">Delivered Items</h2>
+          <span className="text-sm text-gray-500">({deliveredItems.length} items)</span>
         </div>
 
         {deliveredItems.length === 0 ? (
@@ -91,6 +99,7 @@ const DeliveredItems = () => {
             <p className="text-gray-500 text-sm mt-2">
               Items from delivered orders will appear here for you to review
             </p>
+            <p className="text-xs text-gray-400 mt-2">Debug: Loading={loading.toString()}, Items count={deliveredItems.length}</p>
           </div>
         ) : (
           <div className="space-y-4">

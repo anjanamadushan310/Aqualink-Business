@@ -106,9 +106,9 @@ public class IndustrialStuffViewService {
         Double averageRating = reviewRepository.findAverageRatingByProductId(industrial.getId());
         dto.setRating(averageRating != null ? averageRating : 0.0);
 
-        // Calculate total sold
-        Long totalSold = orderItemRepository.findTotalSoldByProductId(industrial.getId());
-        dto.setTotalSold(totalSold != null ? totalSold : Long.valueOf(industrial.getSoldCount()));
+        // Get sold count from industrial entity
+        Integer soldCount = industrial.getSoldCount();
+        dto.setTotalSold(soldCount != null ? soldCount.longValue() : 0L);
 
         // Calculate review count
         Long reviewCount = reviewRepository.countReviewsByProductId(industrial.getId());

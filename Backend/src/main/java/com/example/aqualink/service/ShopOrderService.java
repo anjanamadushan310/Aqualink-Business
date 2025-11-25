@@ -4,8 +4,12 @@ import com.example.aqualink.dto.*;
 import com.example.aqualink.entity.Order;
 import com.example.aqualink.entity.OrderItem;
 import com.example.aqualink.entity.User;
+import com.example.aqualink.entity.Fish;
+import com.example.aqualink.entity.IndustrialStuff;
 import com.example.aqualink.repository.OrderRepository;
 import com.example.aqualink.repository.UserRepository;
+import com.example.aqualink.repository.FishRepository;
+import com.example.aqualink.repository.IndustrialStuffRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +27,8 @@ public class ShopOrderService {
 
     private final OrderRepository orderRepository;
     private final UserRepository userRepository;
+    private final FishRepository fishRepository;
+    private final IndustrialStuffRepository industrialStuffRepository;
 
     /**
      * Get all orders containing products from a specific shop owner
@@ -92,7 +98,13 @@ public class ShopOrderService {
         String newStatus = updateDTO.getNewStatus();
         Order.OrderStatus newOrderStatus = convertStringToOrderStatus(newStatus);
         if (isValidStatusTransition(order.getOrderStatus(), newOrderStatus)) {
+            Order.OrderStatus previousStatus = order.getOrderStatus();
             order.setOrderStatus(newOrderStatus);
+            
+            // If order is being marked as DELIVERED, update sold counts
+            if (newOrderStatus == Order.OrderStatus.DELIVERED && previousStatus != Order.OrderStatus.DELIVERED) {
+                updateSoldCounts(order);
+            }
             
             // If confirming order, set processing date
             if (Order.OrderStatus.ORDER_PENDING.equals(newOrderStatus)) {
@@ -103,6 +115,31 @@ public class ShopOrderService {
             return convertToShopOrderDTO(savedOrder, shopOwnerNic);
         } else {
             throw new RuntimeException("Invalid status transition from " + order.getOrderStatus() + " to " + newStatus);
+        }
+    }
+    
+    /**
+     * Update sold counts for products when order is delivered
+     */
+    private void updateSoldCounts(Order order) {
+        for (OrderItem item : order.getOrderItems()) {
+            if ("FISH".equals(item.getProductType())) {
+                Optional<Fish> fishOpt = fishRepository.findById(item.getProductId());
+                if (fishOpt.isPresent()) {
+                    Fish fish = fishOpt.get();
+                    int currentSold = fish.getSoldCount() != null ? fish.getSoldCount() : 0;
+                    fish.setSoldCount(currentSold + item.getQuantity());
+                    fishRepository.save(fish);
+                }
+            } else if ("INDUSTRIAL".equals(item.getProductType())) {
+                Optional<IndustrialStuff> industrialOpt = industrialStuffRepository.findById(item.getProductId());
+                if (industrialOpt.isPresent()) {
+                    IndustrialStuff industrial = industrialOpt.get();
+                    int currentSold = industrial.getSoldCount() != null ? industrial.getSoldCount() : 0;
+                    industrial.setSoldCount(currentSold + item.getQuantity());
+                    industrialStuffRepository.save(industrial);
+                }
+            }
         }
     }
 

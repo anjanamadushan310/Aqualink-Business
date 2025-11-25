@@ -37,6 +37,7 @@ public class Fish {
     private Integer stock;
     private double price;
     private Integer minimumQuantity;
+    private Integer soldCount = 0;
 
     @Column(name = "create_date_and_time")
     private LocalDateTime createDateAndTime;
