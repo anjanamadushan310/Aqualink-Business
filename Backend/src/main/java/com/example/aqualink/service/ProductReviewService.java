@@ -188,7 +188,7 @@ public class ProductReviewService {
         ProductReviewResponseDTO dto = new ProductReviewResponseDTO();
         dto.setId(review.getId());
         dto.setUserId(review.getUser().getId());
-        dto.setUserName(review.getUser().getFullName());
+        dto.setUserName(review.getUser().getName());
         dto.setProductId(review.getProductId());
         dto.setProductType(review.getProductType());
         dto.setProductName(review.getProductName());
