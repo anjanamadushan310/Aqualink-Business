@@ -56,6 +56,13 @@ public class IndustrialStuff {
     @JoinColumn(name = "user_id", referencedColumnName = "id", nullable = false)
     private User user;
 
+    // Transient fields for reviews/ratings (calculated on demand)
+    @jakarta.persistence.Transient
+    private Double averageRating;
+
+    @jakarta.persistence.Transient
+    private Long reviewCount;
+
     @PrePersist
     protected void onCreate() {
         createDateAndTime = LocalDateTime.now();

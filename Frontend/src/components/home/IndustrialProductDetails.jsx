@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Star, Heart, MessageCircle, ShoppingCart, Truck, User } from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
+import ProductReviewsSection from '../common/ProductReviewsSection';
 
 const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
   const { addToCart, isLoading } = useCart();
@@ -352,41 +353,11 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
       </section>
 
       {/* Reviews Section */}
-      <section className="mt-8">
-        <div className="border border-gray-300 rounded-lg p-6 bg-white">
-          <h2 className="text-xl font-semibold mb-4">Ratings & Reviews</h2>
-
-          <div className="flex gap-8 mb-6">
-            <button className="text-blue-600 hover:underline focus:underline">
-              Product reviews ({productData.reviewCount})
-            </button>
-            <button className="text-blue-600 hover:underline focus:underline">
-              Store reviews ({productData.storeReviews.toLocaleString()})
-            </button>
-          </div>
-
-          {/* Sample Review */}
-          <article className="border-t pt-6">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center">
-                <User className="w-6 h-6 text-white" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="font-medium">John Smith</h3>
-                </div>
-                <div className="flex items-center gap-2 mb-3">
-                  <StarRating rating={4.5} />
-                </div>
-                <p className="text-gray-700 leading-relaxed">
-                  Excellent industrial equipment! Very high quality and exactly as described. 
-                  Fast shipping and great customer service. Would definitely buy from this seller again.
-                </p>
-              </div>
-            </div>
-          </article>
-        </div>
-      </section>
+      <ProductReviewsSection 
+        productId={industrial?.id} 
+        productType="INDUSTRIAL"
+        allowReview={isAuthenticated()}
+      />
     </div>
   );
 };
