@@ -352,11 +352,11 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
         </div>
       </section>
 
-      {/* Reviews Section */}
+      {/* Reviews Section - View Only */}
       <ProductReviewsSection 
         productId={industrial?.id} 
         productType="INDUSTRIAL"
-        allowReview={isAuthenticated()}
+        allowReview={false}
       />
     </div>
   );

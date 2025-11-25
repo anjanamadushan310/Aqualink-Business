@@ -25,5 +25,6 @@ public class ProductReviewRequestDTO {
     @Size(max = 1000, message = "Comment cannot exceed 1000 characters")
     private String comment;
 
-    private Long orderId; // Optional: links review to a specific order
+    @NotNull(message = "Order ID is required")
+    private Long orderId; // Required: links review to a specific delivered order
 }

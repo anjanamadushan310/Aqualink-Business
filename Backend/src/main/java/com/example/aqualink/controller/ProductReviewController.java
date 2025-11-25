@@ -27,7 +27,7 @@ public class ProductReviewController {
     private final UserRepository userRepository;
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('SHOP_OWNER', 'EXPORTER', 'FARM_OWNER')")
+    @PreAuthorize("hasRole('SHOP_OWNER')")
     public ResponseEntity<?> createReview(
             @Valid @RequestBody ProductReviewRequestDTO request,
             Authentication authentication) {
@@ -61,7 +61,7 @@ public class ProductReviewController {
     }
 
     @GetMapping("/my-reviews")
-    @PreAuthorize("hasAnyRole('SHOP_OWNER', 'EXPORTER', 'FARM_OWNER')")
+    @PreAuthorize("hasRole('SHOP_OWNER')")
     public ResponseEntity<List<ProductReviewResponseDTO>> getUserReviews(Authentication authentication) {
         User user = userRepository.findByEmail(authentication.getName())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -71,7 +71,7 @@ public class ProductReviewController {
     }
 
     @PutMapping("/{reviewId}")
-    @PreAuthorize("hasAnyRole('SHOP_OWNER', 'EXPORTER', 'FARM_OWNER')")
+    @PreAuthorize("hasRole('SHOP_OWNER')")
     public ResponseEntity<?> updateReview(
             @PathVariable Long reviewId,
             @Valid @RequestBody ProductReviewRequestDTO request,
@@ -90,7 +90,7 @@ public class ProductReviewController {
     }
 
     @DeleteMapping("/{reviewId}")
-    @PreAuthorize("hasAnyRole('SHOP_OWNER', 'EXPORTER', 'FARM_OWNER')")
+    @PreAuthorize("hasRole('SHOP_OWNER')")
     public ResponseEntity<?> deleteReview(
             @PathVariable Long reviewId,
             Authentication authentication) {
@@ -110,7 +110,7 @@ public class ProductReviewController {
     }
 
     @GetMapping("/check/{productId}/{productType}")
-    @PreAuthorize("hasAnyRole('SHOP_OWNER', 'EXPORTER', 'FARM_OWNER')")
+    @PreAuthorize("hasRole('SHOP_OWNER')")
     public ResponseEntity<Map<String, Boolean>> checkIfUserReviewedProduct(
             @PathVariable Long productId,
             @PathVariable String productType,

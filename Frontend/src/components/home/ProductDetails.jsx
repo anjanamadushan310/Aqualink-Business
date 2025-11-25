@@ -328,11 +328,11 @@ const ProductDetails = ({ fish, onPurchaseSuccess }) => {
         </div>
       </section>
 
-      {/* Reviews Section */}
+      {/* Reviews Section - View Only */}
       <ProductReviewsSection 
         productId={fish?.id} 
         productType="FISH"
-        allowReview={isAuthenticated()}
+        allowReview={false}
       />
     </div>
   );

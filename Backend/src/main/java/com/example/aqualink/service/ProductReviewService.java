@@ -39,6 +39,33 @@ public class ProductReviewService {
         // Validate product exists
         String productName = validateAndGetProductName(request.getProductId(), request.getProductType());
 
+        // Order ID is required - verify it belongs to this user and contains this product
+        if (request.getOrderId() == null) {
+            throw new RuntimeException("Order ID is required. You can only review products you have received.");
+        }
+
+        Order order = orderRepository.findById(request.getOrderId())
+                .orElseThrow(() -> new RuntimeException("Order not found"));
+
+        // Verify order belongs to the user
+        if (!order.getBuyerUser().getId().equals(userId)) {
+            throw new RuntimeException("This order does not belong to you");
+        }
+
+        // Verify order status is DELIVERED
+        if (order.getOrderStatus() != Order.OrderStatus.DELIVERED) {
+            throw new RuntimeException("You can only review products from delivered orders. Current status: " + order.getOrderStatus());
+        }
+
+        // Check if order contains this product
+        boolean productInOrder = order.getOrderItems().stream()
+                .anyMatch(item -> item.getProductId().equals(request.getProductId()) 
+                        && item.getProductType().equals(request.getProductType()));
+
+        if (!productInOrder) {
+            throw new RuntimeException("This product is not in the specified order");
+        }
+
         // Create review
         ProductReview review = new ProductReview();
         review.setUser(user);
@@ -48,27 +75,8 @@ public class ProductReviewService {
         review.setRating(request.getRating());
         review.setComment(request.getComment());
 
-        // If order ID is provided, verify it belongs to this user and contains this product
-        if (request.getOrderId() != null) {
-            Order order = orderRepository.findById(request.getOrderId())
-                    .orElseThrow(() -> new RuntimeException("Order not found"));
-
-            if (!order.getBuyerUser().getId().equals(userId)) {
-                throw new RuntimeException("This order does not belong to you");
-            }
-
-            // Check if order contains this product
-            boolean productInOrder = order.getOrderItems().stream()
-                    .anyMatch(item -> item.getProductId().equals(request.getProductId()) 
-                            && item.getProductType().equals(request.getProductType()));
-
-            if (!productInOrder) {
-                throw new RuntimeException("This product is not in the specified order");
-            }
-
-            review.setOrder(order);
-            review.setVerifiedPurchase(true);
-        }
+        review.setOrder(order);
+        review.setVerifiedPurchase(true);
 
         ProductReview savedReview = productReviewRepository.save(review);
         return mapToResponseDTO(savedReview);

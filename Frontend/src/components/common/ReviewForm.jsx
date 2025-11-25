@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import StarRating from '../common/StarRating';
 import apiService from '../../services/apiService';
 
-const ReviewForm = ({ productId, productType, orderId = null, onReviewSubmitted, onCancel }) => {
+const ReviewForm = ({ productId, productType, orderId, onReviewSubmitted, onCancel }) => {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -13,6 +13,11 @@ const ReviewForm = ({ productId, productType, orderId = null, onReviewSubmitted,
     
     if (rating === 0) {
       setError('Please select a rating');
+      return;
+    }
+
+    if (!orderId) {
+      setError('Order ID is required. You can only review products from delivered orders.');
       return;
     }
 
@@ -38,7 +43,7 @@ const ReviewForm = ({ productId, productType, orderId = null, onReviewSubmitted,
         onReviewSubmitted();
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to submit review');
+      setError(err.response?.data?.error || err.response?.data?.message || 'Failed to submit review');
     } finally {
       setIsSubmitting(false);
     }

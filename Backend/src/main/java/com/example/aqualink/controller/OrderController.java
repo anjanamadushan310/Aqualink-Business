@@ -1,5 +1,6 @@
 package com.example.aqualink.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -16,9 +17,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.example.aqualink.dto.DeliveredOrderItemDTO;
 import com.example.aqualink.entity.Order;
+import com.example.aqualink.entity.OrderItem;
 import com.example.aqualink.entity.User;
 import com.example.aqualink.repository.OrderRepository;
+import com.example.aqualink.repository.ProductReviewRepository;
 import com.example.aqualink.repository.UserRepository;
 
 @RestController
@@ -30,6 +34,9 @@ public class OrderController {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private ProductReviewRepository productReviewRepository;
 
     /**
      * Get all orders for the logged-in buyer (customer who placed orders)
@@ -253,6 +260,67 @@ public class OrderController {
             return ResponseEntity.ok(updatedOrder);
         } catch (Exception e) {
             System.err.println("Error updating seller order status: " + e.getMessage());
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
+    /**
+     * Get all delivered order items for shop owner with review status
+     */
+    @GetMapping("/delivered-items")
+    @PreAuthorize("hasRole('SHOP_OWNER')")
+    public ResponseEntity<List<DeliveredOrderItemDTO>> getDeliveredItems(Authentication authentication) {
+        try {
+            String email = authentication.getName();
+            User shopOwner = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            // Get all delivered orders for this shop owner
+            List<Order> deliveredOrders = orderRepository.findAll().stream()
+                    .filter(order -> order.getBuyerUser().getId().equals(shopOwner.getId()))
+                    .filter(order -> order.getOrderStatus() == Order.OrderStatus.DELIVERED)
+                    .toList();
+
+            List<DeliveredOrderItemDTO> deliveredItems = new ArrayList<>();
+
+            for (Order order : deliveredOrders) {
+                for (OrderItem item : order.getOrderItems()) {
+                    // Check if this item has been reviewed
+                    boolean hasReview = productReviewRepository.existsByUserIdAndProductIdAndProductType(
+                        shopOwner.getId(), 
+                        item.getProductId(), 
+                        item.getProductType()
+                    );
+
+                    Long reviewId = null;
+                    if (hasReview) {
+                        var review = productReviewRepository.findByUserIdAndProductIdAndProductType(
+                            shopOwner.getId(), 
+                            item.getProductId(), 
+                            item.getProductType()
+                        );
+                        reviewId = review.isPresent() ? review.get().getId() : null;
+                    }
+
+                    DeliveredOrderItemDTO dto = new DeliveredOrderItemDTO();
+                    dto.setOrderId(order.getId());
+                    dto.setOrderItemId(item.getOrderItemId());
+                    dto.setProductId(item.getProductId());
+                    dto.setProductType(item.getProductType());
+                    dto.setProductName(item.getProductName());
+                    dto.setQuantity(item.getQuantity());
+                    dto.setPrice(item.getPrice());
+                    dto.setDeliveredDate(order.getOrderDateTime());
+                    dto.setHasReview(hasReview);
+                    dto.setReviewId(reviewId);
+
+                    deliveredItems.add(dto);
+                }
+            }
+
+            return ResponseEntity.ok(deliveredItems);
+        } catch (Exception e) {
+            System.err.println("Error fetching delivered items: " + e.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
