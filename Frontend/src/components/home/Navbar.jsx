@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
-import { Fish, User, Settings, LogOut, Briefcase, Home } from 'lucide-react';
+import { Fish, User, Settings, LogOut, Briefcase, Home, MessageCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import ProfileMenu from './ProfileMenu';
@@ -92,6 +92,18 @@ function Navbar({
                   Register
                 </button>
               </>
+            )}
+
+            {/* Chat Button - Show for all logged-in users */}
+            {user && (
+              <Link 
+                to="/chats" 
+                className="flex items-center space-x-2 text-white font-medium hover:bg-white hover:bg-opacity-10 px-3 py-2 rounded-lg transition-all duration-200"
+                title="My Chats"
+              >
+                <MessageCircle className="w-5 h-5" />
+                <span>Chats</span>
+              </Link>
             )}
 
             {/* Home Button - Only show on dashboard pages */}

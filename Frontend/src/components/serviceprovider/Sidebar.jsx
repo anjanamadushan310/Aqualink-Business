@@ -2,22 +2,21 @@ import React from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import { 
   HomeIcon, 
-  UserPlusIcon, 
   CubeIcon, 
-  UsersIcon,
-  StarIcon,
-  CurrencyDollarIcon,
-  ShoppingBagIcon,
-  PhotoIcon,
-  XMarkIcon,
-  ClipboardDocumentListIcon
+  ClipboardDocumentListIcon,
+  ClockIcon,
+  ChatBubbleLeftRightIcon,
+  PlusCircleIcon,
+  XMarkIcon
 } from '@heroicons/react/24/outline';
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
   const menuItems = [
+    { id: 'overview', label: 'Dashboard Overview', icon: HomeIcon, path: '/dashboard/overview' },
     { id: 'service-requests', label: 'Service Requests', icon: ClipboardDocumentListIcon, path: '/dashboard/service-requests' },
-    { id: 'service-history', label: 'Service History', icon: ShoppingBagIcon, path: '/dashboard/service-history' },
-    { id: 'service-ads-form', label: 'Create Ads', icon: ShoppingBagIcon, path: '/dashboard/create-ads' },
+    { id: 'my-services', label: 'My Services', icon: CubeIcon, path: '/dashboard/my-services' },
+    { id: 'service-history', label: 'Service History', icon: ClockIcon, path: '/dashboard/service-history' },
+    { id: 'messages', label: 'Messages', icon: ChatBubbleLeftRightIcon, path: '/dashboard/messages' },
   ];
 
   return (

@@ -11,17 +11,20 @@ const ReviewItem = ({ review, onDelete, currentUserId }) => {
     });
   };
 
-  const isOwnReview = currentUserId && review.userId === currentUserId;
+  // Handle both product reviews (userId, userName) and service reviews (customerId, customerName)
+  const reviewUserId = review.userId || review.customerId;
+  const reviewUserName = review.userName || review.customerName || 'Anonymous';
+  const isOwnReview = currentUserId && reviewUserId === currentUserId;
 
   return (
     <div className="bg-white p-4 rounded-lg border border-gray-200 hover:shadow-md transition">
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-            {review.userName?.charAt(0).toUpperCase() || 'U'}
+            {reviewUserName?.charAt(0).toUpperCase() || 'U'}
           </div>
           <div>
-            <h4 className="font-semibold text-gray-900">{review.userName}</h4>
+            <h4 className="font-semibold text-gray-900">{reviewUserName}</h4>
             <p className="text-sm text-gray-500">{formatDate(review.reviewedAt)}</p>
           </div>
         </div>

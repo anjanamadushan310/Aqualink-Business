@@ -5,7 +5,7 @@ import ReviewForm from '../common/ReviewForm';
 import apiService from '../../services/apiService';
 import { useAuth } from '../../context/AuthContext';
 
-const ProductReviewsSection = ({ productId, productType, allowReview = true, onReviewUpdate }) => {
+const ProductReviewsSection = ({ productId, productType, allowReview = true, onReviewUpdate, customEndpoint, customSummaryEndpoint }) => {
   const { user } = useAuth();
   const [reviews, setReviews] = useState([]);
   const [summary, setSummary] = useState(null);
@@ -16,13 +16,18 @@ const ProductReviewsSection = ({ productId, productType, allowReview = true, onR
   const fetchReviews = useCallback(async () => {
     try {
       console.log('Fetching reviews for:', productId, productType);
-      const response = await apiService.get(`/product-reviews/product/${productId}/${productType}`);
+      const endpoint = customEndpoint || `/product-reviews/product/${productId}/${productType}`;
+      const response = await apiService.get(endpoint);
       console.log('Reviews response:', response);
-      console.log('Reviews response.data:', response.data);
-      console.log('Reviews response type:', typeof response);
       
-      // Handle both response formats
-      const reviewsData = Array.isArray(response) ? response : (response.data || []);
+      // Handle paginated response for service reviews
+      let reviewsData;
+      if (response.content) {
+        reviewsData = response.content; // Paginated response
+      } else {
+        reviewsData = Array.isArray(response) ? response : (response.data || []);
+      }
+      
       console.log('Setting reviews to:', reviewsData);
       setReviews(reviewsData);
     } catch (err) {
@@ -30,12 +35,13 @@ const ProductReviewsSection = ({ productId, productType, allowReview = true, onR
       console.error('Error details:', err.response?.data);
       setReviews([]);
     }
-  }, [productId, productType]);
+  }, [productId, productType, customEndpoint]);
 
   const fetchSummary = useCallback(async () => {
     try {
       console.log('Fetching summary for:', productId, productType);
-      const response = await apiService.get(`/product-reviews/product/${productId}/${productType}/summary`);
+      const endpoint = customSummaryEndpoint || `/product-reviews/product/${productId}/${productType}/summary`;
+      const response = await apiService.get(endpoint);
       console.log('Summary response:', response);
       console.log('Summary response.data:', response.data);
       
@@ -49,7 +55,7 @@ const ProductReviewsSection = ({ productId, productType, allowReview = true, onR
     } finally {
       setLoading(false);
     }
-  }, [productId, productType]);
+  }, [productId, productType, customSummaryEndpoint]);
 
   const checkIfUserReviewed = useCallback(async () => {
     try {

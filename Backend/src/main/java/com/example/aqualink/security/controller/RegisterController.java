@@ -3,11 +3,13 @@ package com.example.aqualink.security.controller;
 import com.example.aqualink.entity.Role;
 import com.example.aqualink.security.service.OTPService;
 import com.example.aqualink.security.service.AuthService;
+import com.example.aqualink.security.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -23,6 +25,9 @@ public class RegisterController {
 
     @Autowired
     private OTPService otpService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
 
     @GetMapping("/roles")
     public ResponseEntity<List<Map<String, String>>> getUserRoles() {
@@ -153,5 +158,81 @@ public class RegisterController {
             response.put("error", result);
             return ResponseEntity.badRequest().body(response);
         }
+    }
+
+    @PostMapping("/add-role")
+    public ResponseEntity<Map<String, String>> addRoleToUser(
+            HttpServletRequest request,
+            @RequestParam("role") String roleString,
+            @RequestParam(value = "nicFrontDocument", required = false) MultipartFile nicFrontDocument,
+            @RequestParam(value = "nicBackDocument", required = false) MultipartFile nicBackDocument,
+            @RequestParam(value = "selfieDocument", required = false) MultipartFile selfieDocument) {
+
+        Map<String, String> response = new HashMap<>();
+
+        try {
+            // Get user ID from JWT token
+            Long userId = getCurrentUserId(request);
+            if (userId == null) {
+                response.put("message", "Unauthorized");
+                response.put("error", "Please log in to add a role");
+                return ResponseEntity.status(401).body(response);
+            }
+
+            // Validate role
+            if (roleString == null || roleString.trim().isEmpty()) {
+                response.put("message", "Failed to add role");
+                response.put("error", "Role is required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Validate documents
+            if ((nicFrontDocument == null || nicFrontDocument.isEmpty()) ||
+                (nicBackDocument == null || nicBackDocument.isEmpty()) ||
+                (selfieDocument == null || selfieDocument.isEmpty())) {
+                response.put("message", "Failed to add role");
+                response.put("error", "All documents (NIC Front, NIC Back, and Selfie) are required");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Add role to user
+            String result = authService.addRoleToUser(userId, roleString, 
+                nicFrontDocument, nicBackDocument, selfieDocument);
+
+            if (result.equals("Role request submitted successfully")) {
+                response.put("message", result);
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("message", "Failed to add role");
+                response.put("error", result);
+                return ResponseEntity.badRequest().body(response);
+            }
+
+        } catch (Exception e) {
+            response.put("message", "Failed to add role");
+            response.put("error", e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
+    // Helper method to get userId from JWT token
+    private Long getCurrentUserId(HttpServletRequest request) {
+        try {
+            String authHeader = request.getHeader("Authorization");
+            if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                String token = authHeader.substring(7);
+                Object userIdObj = jwtUtil.extractClaim(token, claims -> claims.get("userId"));
+                if (userIdObj instanceof Integer) {
+                    return ((Integer) userIdObj).longValue();
+                } else if (userIdObj instanceof Long) {
+                    return (Long) userIdObj;
+                } else if (userIdObj instanceof String) {
+                    return Long.parseLong((String) userIdObj);
+                }
+            }
+        } catch (Exception e) {
+            return null;
+        }
+        return null;
     }
 }

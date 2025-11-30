@@ -83,6 +83,21 @@ public class UserRole {
     @Column(name = "badge_criteria_met")
     private String badgeCriteriaMet; // What criteria was met to earn the badge
 
+    // Document paths for role-specific verification
+    @Column(name = "nic_front_document_path")
+    private String nicFrontDocumentPath;
+
+    @Column(name = "nic_back_document_path")
+    private String nicBackDocumentPath;
+
+    @Column(name = "selfie_document_path")
+    private String selfieDocumentPath;
+
+    // Verification status for this specific role
+    @Enumerated(EnumType.STRING)
+    @Column(name = "verification_status", length = 20)
+    private VerificationStatus verificationStatus = VerificationStatus.PENDING;
+
     @Column(name = "created_at")
     private LocalDateTime createdAt;
 

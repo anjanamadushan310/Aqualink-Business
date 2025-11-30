@@ -5,16 +5,22 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import ProductReviewsSection from '../common/ProductReviewsSection';
 import apiService from '../../services/apiService';
+import ChatWithSeller from '../chat/ChatWithSeller';
+import LoginModal from '../auth/LoginModal';
 
 const ProductDetails = ({ fish, onPurchaseSuccess }) => {
   const { addToCart } = useCart();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [quantity, setQuantity] = useState(fish?.minimumQuantity || 1);
   const [selectedImage, setSelectedImage] = useState(0);
   const [addingToCart, setAddingToCart] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [reviewSummary, setReviewSummary] = useState(null);
+  const [showChat, setShowChat] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
   // Fetch review summary when component mounts or fish changes
   useEffect(() => {
@@ -47,7 +53,9 @@ const ProductDetails = ({ fish, onPurchaseSuccess }) => {
       return fullUrl;
     }
 
-    const fullUrl = `http://localhost:8080/uploads/${imagePath}`;
+    // Remove leading slash if present to avoid double slashes
+    const cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+    const fullUrl = `http://localhost:8080/uploads/${cleanPath}`;
     return fullUrl;
   };
 
@@ -102,7 +110,14 @@ const ProductDetails = ({ fish, onPurchaseSuccess }) => {
 
   const handleAddToCart = useCallback(async () => {
     if (!isAuthenticated()) {
-      alert('Please log in to add items to cart');
+      setPendingAction('cart');
+      setShowLoginModal(true);
+      return;
+    }
+
+    // Check if user has SHOP_OWNER role
+    if (!user?.roles?.includes('SHOP_OWNER')) {
+      setShowRoleModal(true);
       return;
     }
 
@@ -136,7 +151,7 @@ const ProductDetails = ({ fish, onPurchaseSuccess }) => {
     } finally {
       setAddingToCart(false);
     }
-  }, [fish, quantity, addToCart, isAuthenticated, onPurchaseSuccess, navigate]);
+  }, [fish, quantity, addToCart, isAuthenticated, onPurchaseSuccess, navigate, user]);
 
   // Star rating component
   const StarRating = ({ rating, size = 'w-4 h-4' }) => (
@@ -156,6 +171,28 @@ const ProductDetails = ({ fish, onPurchaseSuccess }) => {
       <span className="ml-2 font-semibold text-sm">{rating}</span>
     </div>
   );
+
+  const handleChatClick = () => {
+    if (!isAuthenticated()) {
+      setPendingAction('chat');
+      setShowLoginModal(true);
+      return;
+    }
+    if (user && user.userId === fish?.userId) {
+      alert('You cannot chat with yourself');
+      return;
+    }
+    setShowChat(true);
+  };
+
+  const handleLoginSuccess = () => {
+    if (pendingAction === 'cart') {
+      handleAddToCart();
+    } else if (pendingAction === 'chat') {
+      setShowChat(true);
+    }
+    setPendingAction(null);
+  };
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
@@ -291,12 +328,10 @@ const ProductDetails = ({ fish, onPurchaseSuccess }) => {
             <div className="space-y-3">
               <button 
                 onClick={handleAddToCart}
-                disabled={productData.stock === 0 || addingToCart || !isAuthenticated}
+                disabled={productData.stock === 0 || addingToCart}
                 className={`w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 ${
                   productData.stock === 0
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : !isAuthenticated
-                    ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
                     : addingToCart
                     ? 'bg-blue-400 text-white cursor-not-allowed'
                     : 'bg-blue-600 text-white hover:bg-blue-700'
@@ -312,14 +347,16 @@ const ProductDetails = ({ fish, onPurchaseSuccess }) => {
                     <ShoppingCart className="w-5 h-5" />
                     {productData.stock === 0 
                       ? 'Out of Stock' 
-                      : !isAuthenticated 
-                      ? 'Login to Add to Cart'
                       : 'Add to Cart'
                     }
                   </>
                 )}
               </button>
-              <button className="w-full py-3 px-4 border-2 border-green-600 text-green-600 rounded-lg font-medium hover:bg-green-50 transition-colors flex items-center justify-center gap-2">
+              <button 
+                className="w-full py-3 px-4 border-2 border-green-600 text-green-600 rounded-lg font-medium hover:bg-green-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleChatClick}
+                disabled={user && user.userId === fish?.userId}
+              >
                 <MessageCircle className="w-5 h-5" />
                 Chat with Seller
               </button>
@@ -354,6 +391,83 @@ const ProductDetails = ({ fish, onPurchaseSuccess }) => {
           }
         }}
       />
+
+      {/* Role Access Modal */}
+      {showRoleModal && (
+        <div className="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+          <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" onClick={() => setShowRoleModal(false)}></div>
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
+
+            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="sm:flex sm:items-start">
+                  <div className="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
+                    <User className="h-6 w-6 text-red-600" />
+                  </div>
+                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                    <h3 className="text-lg leading-6 font-medium text-gray-900" id="modal-title">
+                      Shop Owner Account Required
+                    </h3>
+                    <div className="mt-2">
+                      <p className="text-sm text-gray-500">
+                        Only Shop Owners can purchase fish from this platform.
+                      </p>
+                      <div className="mt-4 bg-blue-50 p-3 rounded-md">
+                        <p className="text-sm text-blue-700 font-medium mb-1">How to upgrade:</p>
+                        <ol className="list-decimal list-inside text-sm text-blue-600 space-y-1">
+                          <li>Go to <strong>Profile Menu</strong> (top right)</li>
+                          <li>Select <strong>My Profile</strong></li>
+                          <li>Click <strong>Add Additional Role</strong></li>
+                          <li>Choose <strong>Register as Shop Owner</strong></li>
+                        </ol>
+                      </div>
+                      <p className="mt-3 text-xs text-gray-400">
+                        Note: You can have multiple roles on the same account.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                <button
+                  type="button"
+                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => navigate('/user-profile')}
+                >
+                  Go to Profile
+                </button>
+                <button
+                  type="button"
+                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
+                  onClick={() => setShowRoleModal(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Chat Modal */}
+      {showChat && fish && (
+        <ChatWithSeller
+          product={fish}
+          productType="FISH"
+          onClose={() => setShowChat(false)}
+        />
+      )}
+
+      {/* Login Modal - New Addition */}
+      {showLoginModal && (
+        <LoginModal 
+          isOpen={showLoginModal} 
+          onClose={() => setShowLoginModal(false)}
+          onSuccess={handleLoginSuccess} // Handle login success
+        />
+      )}
     </div>
   );
 };

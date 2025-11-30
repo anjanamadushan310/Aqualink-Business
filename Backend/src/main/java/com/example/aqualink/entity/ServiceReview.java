@@ -29,6 +29,9 @@ public class ServiceReview {
     @Column(nullable = false)
     private Long customerId;
 
+    @Transient
+    private String customerName; // Populated from User entity
+
     @Column(nullable = false)
     private Integer rating; // 1-5 stars
 

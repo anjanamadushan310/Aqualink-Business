@@ -1,5 +1,6 @@
 package com.example.aqualink.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -13,14 +14,16 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class ServiceBooking {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "service_id", nullable = false)
+    @JsonIgnoreProperties({"bookings", "reviews", "hibernateLazyInitializer", "handler"})
     private Service service;
 
     @Column(nullable = false)
@@ -56,6 +59,15 @@ public class ServiceBooking {
     private LocalDateTime completedAt;
 
     private String providerNotes;
+
+    @Transient
+    private String customerName;
+
+    @Transient
+    private String sellerName;
+
+    @Transient
+    private boolean hasReview;
 
     public enum BookingStatus {
         PENDING,      // Waiting for provider response

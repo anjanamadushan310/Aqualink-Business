@@ -69,9 +69,8 @@ public class DatabaseSeeder {
     }
 
     private boolean shouldSeedData() {
-        // Skip seeding if we already have users (other than the auto-created admin)
-        long userCount = userRepository.count();
-        return userCount <= 1; // Only admin exists or database is empty
+        // Always attempt to seed data, individual methods will check for duplicates
+        return true;
     }
 
     @Transactional
@@ -260,6 +259,10 @@ public class DatabaseSeeder {
     }
 
     private void createFishAd(User user, String name, String description, int stock, double price, int minQty) {
+        if (fishRepository.existsByNameAndUserId(name, user.getId())) {
+            return;
+        }
+
         Fish fish = new Fish();
         fish.setUser(user);
         fish.setNicNumber(user.getNicNumber());
@@ -333,6 +336,10 @@ public class DatabaseSeeder {
     }
 
     private void createEquipment(User user, String name, String description, int stock, double price, int minQty) {
+        if (industrialStuffRepository.existsByNameAndUserId(name, user.getId())) {
+            return;
+        }
+
         IndustrialStuff equipment = new IndustrialStuff();
         equipment.setUser(user);
         equipment.setNicNumber(user.getNicNumber());
@@ -396,6 +403,10 @@ public class DatabaseSeeder {
     }
 
     private void createService(User user, String name, String description, String category, double price) {
+        if (serviceRepository.existsByNameAndServiceProviderId(name, user.getId())) {
+            return;
+        }
+        
         Service service = new Service();
         service.setServiceProviderId(user.getId());
         service.setName(name);
@@ -552,6 +563,10 @@ public class DatabaseSeeder {
     }
 
     private void createBlogPost(User author, String title, String content, LocalDateTime createdAt, int views) {
+        if (blogPostRepository.existsByTitleAndAuthor(title, author)) {
+            return;
+        }
+        
         BlogPost post = new BlogPost();
         post.setAuthor(author);
         post.setTitle(title);

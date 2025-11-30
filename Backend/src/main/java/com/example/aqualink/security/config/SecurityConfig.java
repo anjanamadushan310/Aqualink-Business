@@ -64,7 +64,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/fish-ads").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/delivery-quotes/create-initial-order").permitAll() // Temporarily allow this endpoint for testing
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // WebSocket endpoints
+                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/app/**").permitAll()
+                        .requestMatchers("/topic/**").permitAll()
                         // Protected endpoints - require authentication
+                        .requestMatchers("/api/chat/**").authenticated()
                         .requestMatchers("/api/delivery/**").authenticated()
                         .requestMatchers("/api/delivery-quotes/**").authenticated()
                         .requestMatchers("/api/shop/**").authenticated()
@@ -86,7 +91,10 @@ public class SecurityConfig {
         
         // Parse allowed origins from property (comma-separated)
         List<String> origins = Arrays.asList(allowedOrigins.split(","));
-        configuration.setAllowedOrigins(origins);
+        
+        // Use setAllowedOriginPatterns instead of setAllowedOrigins when allowCredentials is true
+        // This fixes: "When allowCredentials is true, allowedOrigins cannot contain the special value *"
+        configuration.setAllowedOriginPatterns(origins);
         
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With"));

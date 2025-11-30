@@ -30,4 +30,6 @@ public interface IndustrialStuffRepository extends JpaRepository<IndustrialStuff
 
     @Query("SELECT i FROM IndustrialStuff i LEFT JOIN FETCH i.user WHERE i.id = :id")
     Optional<IndustrialStuff> findByIdWithProfile(@Param("id") Long id);
+
+    boolean existsByNameAndUserId(String name, Long userId);
 }

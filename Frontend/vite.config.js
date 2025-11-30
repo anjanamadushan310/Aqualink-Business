@@ -6,6 +6,7 @@ export default defineConfig({
   plugins: [react()],
   // Ensure environment variables are available in the build
   define: {
-    'process.env': process.env
+    'process.env': process.env,
+    'global': 'globalThis'
   }
 })

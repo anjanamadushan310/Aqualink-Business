@@ -48,4 +48,7 @@ public class CartItem {
 
     @Column(name = "business_name")
     private String businessName;
+
+    @Column(name = "image")
+    private String image;
 }

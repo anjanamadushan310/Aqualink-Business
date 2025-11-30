@@ -10,7 +10,8 @@ import {
   ShoppingBagIcon,
   PhotoIcon,
   XMarkIcon,
-  ClipboardDocumentListIcon
+  ClipboardDocumentListIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
@@ -20,6 +21,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
     { id: 'canceled-orders', label: 'Canceled Orders', icon: XMarkIcon, path: '/dashboard/canceled-orders' },
     { id: 'fish-stock-management', label: 'Stock Management', icon: ClipboardDocumentListIcon, path: '/dashboard/stock-management' },
     { id: 'fish-ads-form', label: 'Create Ads', icon: PhotoIcon, path: '/dashboard/create-ads' },
+    { id: 'messages', label: 'Messages', icon: ChatBubbleLeftRightIcon, path: '/dashboard/messages' },
   ];
 
   return (

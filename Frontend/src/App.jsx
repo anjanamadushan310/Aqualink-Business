@@ -21,6 +21,11 @@ import Cart from "./components/shopowner/Cart";
 import OrdersManagement from "./components/shopowner/OrdersManagement";
 import BlogPage from "./pages/BlogPage";
 import BlogPostPage from "./pages/BlogPostPage";
+import ChatPage from "./pages/ChatPage";
+import ChatTestPage from "./pages/ChatTestPage";
+import ServiceDetailsPage from "./pages/ServiceDetailsPage";
+import FishDetailsPage from "./pages/FishDetailsPage";
+import IndustrialDetailsPage from "./pages/IndustrialDetailsPage";
 import { AuthProvider } from "./context/AuthContext";
 import { CartProvider } from "./context/CartContext";
 import { useCart } from "./context/CartContext";
@@ -126,6 +131,31 @@ const AppRouter = ({ showLogin, setShowLogin, showProfileMenu, setShowProfileMen
           <Route path="/contact" element={<Contact/>} />
           <Route path="/blog" element={<BlogPage />} />
           <Route path="/blog/:postId" element={<BlogPostPage />} />
+          
+          {/* Product Details Routes */}
+          <Route path="/service/:id" element={<ServiceDetailsPage />} />
+          <Route path="/fish/:id" element={<FishDetailsPage />} />
+          <Route path="/industrial/:id" element={<IndustrialDetailsPage />} />
+
+          {/* Protected Chat Route - Only for logged-in users */}
+          <Route 
+            path="/chats" 
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Chat Testing Page - For development/debugging */}
+          <Route 
+            path="/chat-test" 
+            element={
+              <ProtectedRoute>
+                <ChatTestPage />
+              </ProtectedRoute>
+            } 
+          />
           
           {/* Protected Dashboard Route - Single route for all roles */}
           <Route 

@@ -7,11 +7,12 @@ import ProfileSection from '../components/user-profile/ProfileSection';
 import BasicInformationSection from '../components/user-profile/BasicInformationSection';
 import AddressSection from './../components/user-profile/AddressSection';
 import ActionButtons from '../components/user-profile/ActionButtons';
+import AddRoleSection from '../components/user-profile/AddRoleSection';
 import { districtToTowns } from '../components/user-profile/locationData';
 import { useAuth } from '../context/AuthContext';
 
 const UserProfile = () => {
-    const { refreshUserData } = useAuth();
+    const { refreshUserData, user } = useAuth();
     const [profile, setProfile] = useState({});
     const [initialProfile, setInitialProfile] = useState({});
     const [editingSection, setEditingSection] = useState(null);
@@ -320,6 +321,14 @@ const UserProfile = () => {
                 <div className="mb-6 p-4 bg-green-100 border border-green-400 text-green-700 rounded">
                     {successMessage}
                 </div>
+            )}
+
+            {/* Add Role Section */}
+            {user && user.roles && (
+                <AddRoleSection 
+                    currentRoles={user.roles} 
+                    onRoleAdded={fetchProfile}
+                />
             )}
             
             {/* Basic Information Section */}

@@ -247,7 +247,7 @@ public class AuthService {
             }
 
 
-            LoginResponse response = new LoginResponse(token, roles, user.getNicNumber(), null, user.getId());
+            LoginResponse response = new LoginResponse(token, roles, user.getNicNumber(), user.getId(), user.getName());
 
 
             return response;
@@ -264,5 +264,73 @@ public class AuthService {
     public User findByEmail(String email) {
         return userRepository.findWithRolesByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    @Transactional
+    public String addRoleToUser(Long userId, String roleString, 
+                                MultipartFile nicFrontDocument,
+                                MultipartFile nicBackDocument, 
+                                MultipartFile selfieDocument) {
+        try {
+            // Find user
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            // Validate role
+            Role newRole;
+            try {
+                newRole = Role.valueOf(roleString);
+            } catch (IllegalArgumentException e) {
+                return "Invalid role: " + roleString;
+            }
+
+            // Check if user already has this role
+            boolean alreadyHasRole = userRoleRepository.findByUser(user).stream()
+                    .anyMatch(userRole -> userRole.getRoleName().equals(newRole));
+            
+            if (alreadyHasRole) {
+                return "You already have this role";
+            }
+
+            // Upload new documents (role-specific verification)
+            String nicFrontPath = null;
+            String nicBackPath = null;
+            String selfiePath = null;
+
+            if (nicFrontDocument != null && !nicFrontDocument.isEmpty()) {
+                nicFrontPath = fileUploadService.uploadFile(nicFrontDocument);
+            }
+
+            if (nicBackDocument != null && !nicBackDocument.isEmpty()) {
+                nicBackPath = fileUploadService.uploadFile(nicBackDocument);
+            }
+
+            if (selfieDocument != null && !selfieDocument.isEmpty()) {
+                selfiePath = fileUploadService.uploadFile(selfieDocument);
+            }
+
+            // Validate all documents are uploaded
+            if (nicFrontPath == null || nicBackPath == null || selfiePath == null) {
+                return "All documents (NIC Front, NIC Back, and Selfie) are required";
+            }
+
+            // Create new UserRole with PENDING status for admin approval
+            UserRole userRole = new UserRole();
+            userRole.setUser(user);
+            userRole.setRoleName(newRole);
+            userRole.setVerificationStatus(VerificationStatus.PENDING);
+            userRole.setNicFrontDocumentPath(nicFrontPath);
+            userRole.setNicBackDocumentPath(nicBackPath);
+            userRole.setSelfieDocumentPath(selfiePath);
+            
+            userRoleRepository.save(userRole);
+
+            return "Role request submitted successfully";
+
+        } catch (IOException e) {
+            return "Error uploading file: " + e.getMessage();
+        } catch (Exception e) {
+            return "Failed to add role: " + e.getMessage();
+        }
     }
 }

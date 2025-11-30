@@ -44,4 +44,5 @@ public interface FishRepository extends JpaRepository<Fish, Long> {
     @Query("SELECT f FROM Fish f LEFT JOIN FETCH f.user u LEFT JOIN FETCH u.userProfile WHERE f.id = :id")
     Optional<Fish> findByIdWithUserAndProfile(@Param("id") Long id);
 
+    boolean existsByNameAndUserId(String name, Long userId);
 }

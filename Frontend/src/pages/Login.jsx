@@ -187,16 +187,23 @@ function LoginForm({ onClose }) {
       
       // Make specific error messages more user-friendly
       if (error.message?.includes('pending admin approval')) {
-        displayMessage = "⏳ Your account is awaiting admin approval. Please wait for verification to complete.";
+        displayMessage = "Your account is awaiting admin approval. Please wait for verification to complete.";
       } else if (error.message?.includes('rejected by the administrator')) {
-        displayMessage = "❌ Your account has been rejected. Please contact support for assistance.";
+        displayMessage = "Your account has been rejected. Please contact support for assistance.";
       } else if (error.message?.includes('deactivated')) {
-        displayMessage = "🚫 Your account has been deactivated. Please contact support.";
+        displayMessage = "Your account has been deactivated. Please contact support.";
       } else if (error.message?.includes('Invalid email or password')) {
-        displayMessage = "🔐 Invalid email or password. Please check your credentials.";
+        displayMessage = "Invalid email or password. Please check your credentials.";
+      } else if (error.message === 'Network Error') {
+        displayMessage = "Unable to connect to server. Please check your internet connection.";
       }
       
       setErrMsg(displayMessage);
+      
+      // Clear error message after 7 seconds
+      setTimeout(() => {
+        setErrMsg('');
+      }, 7000);
     } finally {
       setLoading(false);
     }
@@ -213,8 +220,24 @@ function LoginForm({ onClose }) {
         </h2>
 
         {errMsg && (
-          <div className="text-red-500 text-sm text-center bg-red-50 p-2 rounded">
-            {errMsg}
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg flex items-start gap-3 animate-fadeIn">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-red-800">{errMsg}</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setErrMsg('')}
+              className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+              </svg>
+            </button>
           </div>
         )}
 

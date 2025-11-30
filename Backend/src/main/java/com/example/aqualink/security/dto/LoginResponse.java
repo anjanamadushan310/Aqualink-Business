@@ -9,6 +9,7 @@ public class LoginResponse {
     private Set<Role> roles;
     private String nicNumber;
     private Long userId;
+    private String userName; // User's name
     private String message; // Add message field for error handling
 
 
@@ -16,11 +17,12 @@ public class LoginResponse {
     public LoginResponse() {}
 
 
-    public LoginResponse(String token, Set<Role> roles,  String nicNumber, Long userId) {
+    public LoginResponse(String token, Set<Role> roles,  String nicNumber, Long userId, String userName) {
         this.token = token;
         this.roles = roles;
         this.nicNumber = nicNumber;
-
+        this.userId = userId;
+        this.userName = userName;
     }
 
     // Constructor with message (useful for error responses)
@@ -53,6 +55,9 @@ public class LoginResponse {
 
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+
+    public String getUserName() { return userName; }
+    public void setUserName(String userName) { this.userName = userName; }
 
     public String getMessage() { return message; }
     public void setMessage(String message) { this.message = message; }
