@@ -6,35 +6,38 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-@Configuration
+// DISABLED: CORS is handled by SecurityConfig.java to avoid conflicts
+// Having two CORS configurations causes: "When allowCredentials is true, allowedOrigins cannot contain *"
+// @Configuration
 public class CorsConfig implements WebMvcConfigurer {
 
     @Value("${fishimages.upload.dir}")
     private String uploadDir;
 
-    @Override
-    public void addCorsMappings(CorsRegistry registry) {
-        // API endpoints CORS
-        registry.addMapping("/api/**")
-                .allowedOrigins("http://localhost:5173", "http://localhost:3000")
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true);
-
-        // File uploads CORS
-        registry.addMapping("/uploads/**")
-                .allowedOrigins("http://localhost:5173", "http://localhost:3000")
-                .allowedMethods("GET", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true);
-
-        // Images serving CORS (for image display)
-        registry.addMapping("/images/**")
-                .allowedOrigins("http://localhost:5173", "http://localhost:3000")
-                .allowedMethods("GET", "OPTIONS")
-                .allowedHeaders("*")
-                .allowCredentials(true);
-    }
+    // CORS DISABLED - See SecurityConfig.java
+//    @Override
+//    public void addCorsMappings(CorsRegistry registry) {
+//        // API endpoints CORS
+//        registry.addMapping("/api/**")
+//                .allowedOriginPatterns("http://localhost:5173", "http://localhost:3000")
+//                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+//                .allowedHeaders("*")
+//                .allowCredentials(true);
+//
+//        // File uploads CORS
+//        registry.addMapping("/uploads/**")
+//                .allowedOriginPatterns("http://localhost:5173", "http://localhost:3000")
+//                .allowedMethods("GET", "OPTIONS")
+//                .allowedHeaders("*")
+//                .allowCredentials(true);
+//
+//        // Images serving CORS (for image display)
+//        registry.addMapping("/images/**")
+//                .allowedOriginPatterns("http://localhost:5173", "http://localhost:3000")
+//                .allowedMethods("GET", "OPTIONS")
+//                .allowedHeaders("*")
+//                .allowCredentials(true);
+//    }
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {

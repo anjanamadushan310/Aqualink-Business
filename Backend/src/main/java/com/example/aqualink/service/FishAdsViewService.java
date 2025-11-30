@@ -100,9 +100,11 @@ public class FishAdsViewService {
         dto.setActiveStatus(fish.getActiveStatus().toString());
 
         // Get district and userId from user profile
-        if (fish.getUser() != null && fish.getUser().getUserProfile() != null) {
-            dto.setDistrict(fish.getUser().getUserProfile().getAddressDistrict());
+        if (fish.getUser() != null) {
             dto.setUserId(fish.getUser().getId());
+            if (fish.getUser().getUserProfile() != null) {
+                dto.setDistrict(fish.getUser().getUserProfile().getAddressDistrict());
+            }
         }
 
         // Get images

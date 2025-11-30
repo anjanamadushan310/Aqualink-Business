@@ -1,12 +1,17 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import BookingModal from '../home/BookingModal';
+import ChatWithSeller from '../chat/ChatWithSeller';
 
 const Cart = () => {
   const { cartItems, cartCount, totalAmount, loading, updateCartItem, removeFromCart, clearCart, refreshCart } = useCart();
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const [bookingService, setBookingService] = useState(null);
+  const [showChat, setShowChat] = useState(false);
+  const [chatProduct, setChatProduct] = useState(null);
 
   useEffect(() => {
     console.log('Cart component mounted, authentication status:', isAuthenticated());
@@ -108,7 +113,27 @@ const Cart = () => {
     }
   };
 
+  const handleBookClick = (item) => {
+    setBookingService({
+      id: item.productId,
+      name: item.productName,
+      cartItemId: item.cartItemId,
+      ...item
+    });
+  };
 
+  const handleBookingSuccess = async () => {
+    if (bookingService && bookingService.cartItemId) {
+      try {
+        await removeFromCart(bookingService.cartItemId);
+        alert('Service booked successfully! The item has been removed from your cart.');
+      } catch (error) {
+        console.error('Error removing booked service from cart:', error);
+        alert('Service booked successfully!');
+      }
+    }
+    setBookingService(null);
+  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -156,7 +181,13 @@ const Cart = () => {
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">🛒</div>
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">Your cart is empty</h3>
-                <p className="text-gray-600">Add some items to get started!</p>
+                <p className="text-gray-600 mb-6">Add some items to get started!</p>
+                <button
+                  onClick={() => navigate('/')}
+                  className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  Browse Products
+                </button>
               </div>
             ) : (
               !loading && (
@@ -202,79 +233,135 @@ const Cart = () => {
                       
                       {/* Items from this seller */}
                       <div className="space-y-3">
-                        {sellerGroup.items.map(item => (
-                          <div key={item.cartItemId} className="bg-white rounded-lg p-4 border border-gray-200">
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <h4 className="font-semibold text-gray-900 text-lg">{item.productName}</h4>
-                                <p className="text-gray-600">{formatPrice(item.price)} each</p>
-                                <p className="text-sm text-gray-500 capitalize">{item.productType}</p>
-                              </div>
-                              
-                              <div className="flex items-center space-x-4">
-                                <div className="flex items-center space-x-3">
-                                  <button 
-                                    onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
-                                    className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 font-semibold"
-                                  >
-                                    -
-                                  </button>
-                                  <span className="font-semibold text-lg w-8 text-center">{item.quantity}</span>
-                                  <button 
-                                    onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
-                                    className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 font-semibold"
-                                  >
-                                    +
-                                  </button>
+                        {/* Physical Items (Fish, Industrial) */}
+                        {sellerGroup.items.filter(item => item.productType !== 'service').length > 0 && (
+                          <div className="mb-4">
+                            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Products for Delivery</h4>
+                            <div className="space-y-3">
+                              {sellerGroup.items.filter(item => item.productType !== 'service').map(item => (
+                                <div key={item.cartItemId} className="bg-white rounded-lg p-4 border border-gray-200">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                      <h4 className="font-semibold text-gray-900 text-lg">{item.productName}</h4>
+                                      <p className="text-gray-600">{formatPrice(item.price)} each</p>
+                                      <p className="text-sm text-gray-500 capitalize">{item.productType}</p>
+                                    </div>
+                                    
+                                    <div className="flex items-center space-x-4">
+                                      <div className="flex items-center space-x-3">
+                                        <button 
+                                          onClick={() => updateQuantity(item.cartItemId, item.quantity - 1)}
+                                          className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 font-semibold"
+                                        >
+                                          -
+                                        </button>
+                                        <span className="font-semibold text-lg w-8 text-center">{item.quantity}</span>
+                                        <button 
+                                          onClick={() => updateQuantity(item.cartItemId, item.quantity + 1)}
+                                          className="w-8 h-8 rounded-full bg-gray-200 flex items-center justify-center hover:bg-gray-300 font-semibold"
+                                        >
+                                          +
+                                        </button>
+                                      </div>
+                                      
+                                      <div className="text-right min-w-0">
+                                        <div className="font-bold text-lg">{formatPrice(item.price * item.quantity)}</div>
+                                        <button 
+                                          onClick={() => removeItem(item.cartItemId)}
+                                          className="text-red-600 hover:text-red-800 text-sm"
+                                        >
+                                          Remove
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
                                 </div>
-                                
-                                <div className="text-right min-w-0">
-                                  <div className="font-bold text-lg">{formatPrice(item.price * item.quantity)}</div>
-                                  <button 
-                                    onClick={() => removeItem(item.cartItemId)}
-                                    className="text-red-600 hover:text-red-800 text-sm"
-                                  >
-                                    Remove
-                                  </button>
-                                </div>
-                              </div>
+                              ))}
                             </div>
                           </div>
-                        ))}
-                      </div>
-                      
-                      {/* Delivery Options */}
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        {!sellerGroup.isOwnItem && (
-                          <div className="flex space-x-4">
-                            <button
-                              onClick={() => {
-                                alert('This feature is not available yet.');
-                              }}
-                              className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg"
-                            >
-                              🚚 Delivery with Courier Service
-                            </button>
-                            <button
-                              onClick={() => {
-                                const orderData = {
-                                  sessionId: 'SESSION_' + Date.now() + '_' + sellerGroup.sellerId,
-                                  sellerId: sellerGroup.sellerId,
-                                  businessName: sellerGroup.businessName,
-                                  items: sellerGroup.items,
-                                  subtotal: sellerGroup.totalAmount,
-                                  createdAt: new Date().toISOString(),
-                                  status: 'REQUESTING_QUOTES'
-                                };
-                                localStorage.setItem('aqualink_order_data', JSON.stringify(orderData));
-                                navigate('/delivery-request');
-                              }}
-                              className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 px-6 rounded-lg"
-                            >
-                              🌊 Delivery with Aqualink
-                            </button>
+                        )}
+
+                        {/* Service Items */}
+                        {sellerGroup.items.filter(item => item.productType === 'service').length > 0 && (
+                          <div>
+                            <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-2">Services (Booking Only)</h4>
+                            <div className="space-y-3">
+                              {sellerGroup.items.filter(item => item.productType === 'service').map(item => (
+                                <div key={item.cartItemId} className="bg-white rounded-lg p-4 border border-blue-200 bg-blue-50">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex-1">
+                                      <h4 className="font-semibold text-gray-900 text-lg">{item.productName}</h4>
+                                      <p className="text-gray-600">{formatPrice(item.price)}</p>
+                                      <p className="text-sm text-blue-600 font-medium capitalize">Service Booking</p>
+                                    </div>
+                                    
+                                    <div className="flex items-center space-x-4">
+                                      <button
+                                        onClick={() => handleBookClick(item)}
+                                        className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg text-sm flex items-center gap-2"
+                                      >
+                                        📅 Book Now
+                                      </button>
+                                      <div className="text-right min-w-0">
+                                        <div className="font-bold text-lg">{formatPrice(item.price * item.quantity)}</div>
+                                        <button 
+                                          onClick={() => removeItem(item.cartItemId)}
+                                          className="text-red-600 hover:text-red-800 text-sm"
+                                        >
+                                          Remove
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
                           </div>
                         )}
+                      </div>
+                      
+                      {/* Actions */}
+                      <div className="mt-4 pt-4 border-t border-gray-200">
+                        {/* Delivery Options for Physical Items */}
+                        {!sellerGroup.isOwnItem && sellerGroup.items.some(item => item.productType !== 'service') && (
+                          <div className="mb-4">
+                            <h5 className="text-sm font-medium text-gray-700 mb-2">Delivery Options (Products Only)</h5>
+                            <div className="flex space-x-4">
+                              <button
+                                onClick={() => {
+                                  alert('This feature is not available yet.');
+                                }}
+                                className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg"
+                              >
+                                🚚 Delivery with Courier Service
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const physicalItems = sellerGroup.items.filter(item => item.productType !== 'service');
+                                  const physicalSubtotal = physicalItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                                  
+                                  const orderData = {
+                                    sessionId: 'SESSION_' + Date.now() + '_' + sellerGroup.sellerId,
+                                    sellerId: sellerGroup.sellerId,
+                                    businessName: sellerGroup.businessName,
+                                    items: physicalItems,
+                                    subtotal: physicalSubtotal,
+                                    createdAt: new Date().toISOString(),
+                                    status: 'REQUESTING_QUOTES'
+                                  };
+                                  localStorage.setItem('aqualink_order_data', JSON.stringify(orderData));
+                                  navigate('/delivery-request');
+                                }}
+                                className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 px-6 rounded-lg"
+                              >
+                                🌊 Delivery with Aqualink
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Booking Action for Services - Removed as per new requirement */}
+                        {/* Services are now booked individually */}
                         
                         {sellerGroup.isOwnItem && (
                           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
@@ -363,6 +450,37 @@ const Cart = () => {
 
         {/* Global Quote Request Settings - for setting default preferences */}
       </div>
+
+      {/* Booking Modal */}
+      {bookingService && (
+        <BookingModal
+          service={bookingService}
+          onClose={() => setBookingService(null)}
+          onBookingSuccess={handleBookingSuccess}
+          onChatClick={() => {
+            // Close booking modal and open chat
+            const productForChat = {
+              ...bookingService,
+              userId: bookingService.sellerId // Map sellerId to userId for ChatWithSeller
+            };
+            setChatProduct(productForChat);
+            setBookingService(null);
+            setShowChat(true);
+          }}
+        />
+      )}
+
+      {/* Chat Modal */}
+      {showChat && chatProduct && (
+        <ChatWithSeller
+          product={chatProduct}
+          productType="SERVICE"
+          onClose={() => {
+            setShowChat(false);
+            setChatProduct(null);
+          }}
+        />
+      )}
     </div>
   );
 };

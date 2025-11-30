@@ -5,6 +5,8 @@ import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import ProductReviewsSection from '../common/ProductReviewsSection';
 import apiService from '../../services/apiService';
+import ChatWithSeller from '../chat/ChatWithSeller';
+import LoginModal from '../auth/LoginModal';
 
 const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
   const { addToCart, isLoading } = useCart();
@@ -16,6 +18,9 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
   const [addingToCart, setAddingToCart] = useState(false);
   const [showSuccessMessage, setShowSuccessMessage] = useState(false);
   const [reviewSummary, setReviewSummary] = useState(null);
+  const [showChat, setShowChat] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [pendingAction, setPendingAction] = useState(null);
 
   // Fetch review summary when component mounts or industrial changes
   useEffect(() => {
@@ -48,7 +53,9 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
       return fullUrl;
     }
 
-    const fullUrl = `http://localhost:8080/uploads/${imagePath}`;
+    // Remove leading slash if present to avoid double slashes
+    const cleanPath = imagePath.startsWith('/') ? imagePath.substring(1) : imagePath;
+    const fullUrl = `http://localhost:8080/uploads/${cleanPath}`;
     return fullUrl;
   }, []);
 
@@ -109,7 +116,8 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
 
   const handleAddToCart = useCallback(async () => {
     if (!isAuthenticated()) {
-      alert('Please log in to add items to cart');
+      setPendingAction('cart');
+      setShowLoginModal(true);
       return;
     }
 
@@ -144,6 +152,28 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
       setAddingToCart(false);
     }
   }, [industrial, quantity, addToCart, isAuthenticated, onPurchaseSuccess, navigate]);
+
+  const handleChatClick = () => {
+    if (!isAuthenticated()) {
+      setPendingAction('chat');
+      setShowLoginModal(true);
+      return;
+    }
+    if (user && user.userId === industrial?.userId) {
+      alert('You cannot chat with yourself');
+      return;
+    }
+    setShowChat(true);
+  };
+
+  const handleLoginSuccess = () => {
+    if (pendingAction === 'cart') {
+      handleAddToCart();
+    } else if (pendingAction === 'chat') {
+      setShowChat(true);
+    }
+    setPendingAction(null);
+  };
 
   // Star rating component
   const StarRating = ({ rating, size = 'w-4 h-4' }) => (
@@ -348,7 +378,11 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
                   </>
                 )}
               </button>
-              <button className="w-full py-3 px-4 border-2 border-green-600 text-green-600 rounded-lg font-medium hover:bg-green-50 transition-colors flex items-center justify-center gap-2">
+              <button 
+                className="w-full py-3 px-4 border-2 border-green-600 text-green-600 rounded-lg font-medium hover:bg-green-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={handleChatClick}
+                disabled={user && user.userId === industrial?.userId}
+              >
                 <MessageCircle className="w-5 h-5" />
                 Chat with Seller
               </button>
@@ -381,6 +415,26 @@ const IndustrialProductDetails = ({ industrial, onPurchaseSuccess }) => {
               .then(data => setReviewSummary(data))
               .catch(err => console.error('Error refreshing review summary:', err));
           }
+        }}
+      />
+      {/* Chat Modal */}
+      {showChat && industrial && (
+        <ChatWithSeller
+          product={industrial}
+          productType="INDUSTRIAL_STUFF"
+          onClose={() => setShowChat(false)}
+        />
+      )}
+
+      <LoginModal 
+        isOpen={showLoginModal}
+        onClose={() => {
+          setShowLoginModal(false);
+          setPendingAction(null);
+        }}
+        onLoginSuccess={() => {
+          setShowLoginModal(false);
+          handleLoginSuccess();
         }}
       />
     </div>

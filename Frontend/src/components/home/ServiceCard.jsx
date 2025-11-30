@@ -1,31 +1,23 @@
 import React, { useState } from 'react';
+import ServiceDetails from './ServiceDetails';
 
 const ServiceCard = ({ service, onBookingSuccess }) => {
-
-  const [showBookingModal, setShowBookingModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
 
-  const handleBookService = () => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      alert('Please login to book services');
-      return;
-    }
-    setShowBookingModal(true);
+  const handleViewDetails = () => {
+    setShowDetailsModal(true);
   };
 
   const formatPrice = (price, maxPrice) => {
     if (maxPrice && maxPrice > price) {
-      return `LKR ${price} - LKR ${maxPrice}`;
+      return `LKR ${price.toLocaleString()} - ${maxPrice.toLocaleString()}`;
     }
-    return `from LKR ${price}`;
+    return `from LKR ${price.toLocaleString()}`;
   };
 
   const getImageUrl = (imagePath) => {
-    console.log("Image path received:", imagePath);
-
     if (!imagePath) {
-      // Use a data URL for a placeholder image (gray square)
       return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2NjYyIvPjwvc3ZnPg==';
     }
 
@@ -34,14 +26,10 @@ const ServiceCard = ({ service, onBookingSuccess }) => {
     }
 
     if (imagePath.startsWith('/uploads/')) {
-      const fullUrl = `http://localhost:8080${imagePath}`;
-      console.log("Constructed URL:", fullUrl);
-      return fullUrl;
+      return `http://localhost:8080${imagePath}`;
     }
 
-    const fullUrl = `http://localhost:8080/uploads/${imagePath}`;
-    console.log("Constructed URL (fallback):", fullUrl);
-    return fullUrl;
+    return `http://localhost:8080/uploads/${imagePath}`;
   };
 
   const handleImageLoad = () => {
@@ -49,19 +37,18 @@ const ServiceCard = ({ service, onBookingSuccess }) => {
   };
 
   const handleImageError = (e) => {
-    console.error("Image failed to load:", e.target.src);
     setImageLoading(false);
     e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2NjYyIvPjwvc3ZnPg==';
   };
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300">
+      <div className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
         {/* Service Image */}
-        <div className="relative h-48 overflow-hidden bg-gray-200">
+        <div className="relative h-48 sm:h-56 overflow-hidden bg-gray-200">
           {imageLoading && (
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           )}
           <img
@@ -73,11 +60,45 @@ const ServiceCard = ({ service, onBookingSuccess }) => {
             onLoad={handleImageLoad}
             onError={handleImageError}
           />
+          
+          {/* Badges Overlay */}
+          <div className="absolute top-3 right-3 flex flex-col gap-1">
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+              service.available !== false 
+                ? 'bg-green-500 text-white' 
+                : 'bg-red-500 text-white'
+            }`}>
+              {service.available !== false ? 'Available' : 'Unavailable'}
+            </span>
+          </div>
         </div>
 
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {/* Service Name */}
-          <h3 className="text-xl font-semibold text-gray-900 mb-2">{service.name}</h3>
+          <div className="mb-3">
+            <h4 className="text-lg sm:text-xl font-semibold text-gray-900 mb-1 line-clamp-1">
+              {service.name}
+            </h4>
+
+            {/* Rating and Review Count */}
+            <div className="flex items-center gap-3 text-sm">
+              {(service.averageRating > 0 || service.totalReviews > 0) && (
+                <div className="flex items-center gap-1">
+                  <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                    <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+                  </svg>
+                  <span className="font-medium text-gray-700">
+                    {service.averageRating ? service.averageRating.toFixed(1) : '0.0'}
+                  </span>
+                </div>
+              )}
+              {service.totalReviews > 0 && (
+                <span className="text-gray-500">
+                  <span className="font-medium text-blue-600">{service.totalReviews}</span> {service.totalReviews === 1 ? 'review' : 'reviews'}
+                </span>
+              )}
+            </div>
+          </div>
 
           {/* Location */}
           {service.district && (
@@ -91,211 +112,85 @@ const ServiceCard = ({ service, onBookingSuccess }) => {
               <span>{service.district}</span>
             </div>
           )}
-          
-          {/* Review Rate Section */}
-          <div className="flex items-center mb-3">
-            <div className="flex mr-2">
-              {[...Array(5)].map((_, i) => (
-                <span 
-                  key={i} 
-                  className={i < Math.floor(service.reviewRate || 0) ? "text-yellow-400" : "text-gray-300"}
-                >
-                  ⭐
-                </span>
-              ))}
-            </div>
-            <span className="text-sm text-gray-600">
-              {service.reviewRate ? service.reviewRate.toFixed(1) : '0.0'} 
-              <span className="text-gray-400 ml-1">
-                ({service.reviewCount || 0} reviews)
-              </span>
-            </span>
-          </div>
 
-          {/* Category, Duration, Location */}
+          {/* Category & Price */}
           <div className="space-y-2 mb-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                {service.category}
-              </span>
-              <span className="text-lg font-bold text-green-600">
-                {formatPrice(service.price, service.maxPrice)}
-              </span>
-            </div>
-            
-            {service.duration && (
-              <div className="text-sm text-gray-600">
-                ⏱️ Duration: {service.duration}
+            {service.category && (
+              <div className="mb-2">
+                <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                  {service.category}
+                </span>
               </div>
             )}
             
+            <div className="flex justify-between items-center">
+              {service.duration && (
+                <div className="text-sm text-gray-600 flex items-center">
+                  <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {service.duration}
+                </div>
+              )}
+            </div>
+
+            <div className="mb-4">
+              <span className="text-xl font-bold text-blue-600">
+                {formatPrice(service.price, service.maxPrice)}
+              </span>
+            </div>
           </div>
 
-          {/* Availability Status */}
-          <div className="mb-4">
-            <span className={`text-xs px-2 py-1 rounded-full ${
-              service.available !== false 
-                ? 'bg-green-100 text-green-800' 
-                : 'bg-red-100 text-red-800'
-            }`}>
-              {service.available !== false ? 'Available' : 'Unavailable'}
-            </span>
-          </div>
-
-          {/* Book Service Button */}
+          {/* View Details Button */}
           <button
-            onClick={handleBookService}
+            onClick={handleViewDetails}
             disabled={service.available === false}
-            className={`w-full px-4 py-2 rounded-md font-medium transition-colors ${
+            className={`w-full py-2.5 px-4 rounded-lg text-sm font-medium transition duration-300 ${
               service.available === false
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                : 'bg-green-600 text-white hover:bg-green-700'
+                : 'bg-blue-600 hover:bg-blue-700 text-white transform hover:scale-105'
             }`}
           >
-            Book Service
+            {service.available === false ? 'Unavailable' : 'View Details'}
           </button>
         </div>
       </div>
 
-      {/* Booking Modal */}
-      {showBookingModal && (
-        <BookingModal
+      {/* Service Details Modal */}
+      {showDetailsModal && (
+        <ServiceDetailsModal
           service={service}
-          onClose={() => setShowBookingModal(false)}
-          onBookingSuccess={() => {
-            setShowBookingModal(false);
-            if (onBookingSuccess) onBookingSuccess();
-          }}
+          isOpen={showDetailsModal}
+          onClose={() => setShowDetailsModal(false)}
+          onBookingSuccess={onBookingSuccess}
         />
       )}
     </>
   );
 };
 
-// Booking Modal Component
-const BookingModal = ({ service, onClose, onBookingSuccess }) => {
-  const [formData, setFormData] = useState({
-    customerRequirements: '',
-    preferredDate: '',
-    preferredTime: '',
-    customerLocation: '',
-    customerPhone: ''
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-
-    try {
-      const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:8080/api/services/${service.id}/book`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          ...formData,
-          preferredDate: new Date(formData.preferredDate).toISOString()
-        })
-      });
-
-      if (response.ok) {
-        alert('Service booked successfully! The service provider will contact you soon.');
-        onBookingSuccess();
-      } else {
-        throw new Error('Failed to book service');
-      }
-    } catch (error) {
-      console.error('Error booking service:', error);
-      alert('Failed to book service. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+// Modal wrapper for ServiceDetails
+const ServiceDetailsModal = ({ service, isOpen, onClose, onBookingSuccess }) => {
+  if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Book {service.name}</h3>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">✕</button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Requirements *
-            </label>
-            <textarea
-              value={formData.customerRequirements}
-              onChange={(e) => setFormData({...formData, customerRequirements: e.target.value})}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
-              rows="3"
-              required
-              placeholder="Describe what you need..."
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Preferred Date *
-            </label>
-            <input
-              type="datetime-local"
-              value={formData.preferredDate}
-              onChange={(e) => setFormData({...formData, preferredDate: e.target.value})}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Location *
-            </label>
-            <input
-              type="text"
-              value={formData.customerLocation}
-              onChange={(e) => setFormData({...formData, customerLocation: e.target.value})}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
-              required
-              placeholder="Service location address"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Phone Number *
-            </label>
-            <input
-              type="tel"
-              value={formData.customerPhone}
-              onChange={(e) => setFormData({...formData, customerPhone: e.target.value})}
-              className="w-full border border-gray-300 rounded-md px-3 py-2"
-              required
-              placeholder="Your contact number"
-            />
-          </div>
-
-          <div className="flex space-x-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="flex-1 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300"
-            >
-              {isSubmitting ? 'Booking...' : 'Book Now'}
-            </button>
-          </div>
-        </form>
+    <div className="fixed inset-0 z-50 overflow-auto bg-black bg-opacity-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg w-full max-w-7xl max-h-[90vh] overflow-auto relative">
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 z-10 p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        
+        {/* Service Details Component */}
+        <ServiceDetails
+          service={service} 
+          onBookingSuccess={onBookingSuccess}
+        />
       </div>
     </div>
   );

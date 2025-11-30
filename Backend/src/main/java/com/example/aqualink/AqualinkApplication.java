@@ -9,7 +9,7 @@ import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @SpringBootApplication
-@EntityScan("com.example.aqualink.entity")
+@EntityScan({"com.example.aqualink.entity", "com.example.aqualink.chat.entity"})
 @EnableScheduling
 public class AqualinkApplication {
 

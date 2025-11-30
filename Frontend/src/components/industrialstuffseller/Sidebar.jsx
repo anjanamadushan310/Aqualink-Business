@@ -12,7 +12,8 @@ import {
   XMarkIcon,
   ClipboardDocumentListIcon,
   ClockIcon,
-  XCircleIcon
+  XCircleIcon,
+  ChatBubbleLeftRightIcon
 } from '@heroicons/react/24/outline';
 
 const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
@@ -22,6 +23,7 @@ const Sidebar = ({ sidebarOpen, setSidebarOpen }) => {
     { id: 'canceled-orders', label: 'Canceled Orders', icon: XCircleIcon, path: '/dashboard/canceled-orders' },
     { id: 'industrial-stuff-Stock-management', label: 'Stock Management', icon: ShoppingBagIcon, path: '/dashboard/stock-management' },
     { id: 'industrial-stuff-form', label: 'Create Ads', icon: CubeIcon, path: '/dashboard/create-ads' },
+    { id: 'messages', label: 'Messages', icon: ChatBubbleLeftRightIcon, path: '/dashboard/messages' },
   ];
 
   return (

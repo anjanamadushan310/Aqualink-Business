@@ -115,9 +115,11 @@ public class IndustrialStuffViewService {
         dto.setActiveStatus(industrial.getActiveStatus().toString());
 
         // Get district and userId from user profile
-        if (industrial.getUser() != null && industrial.getUser().getUserProfile() != null) {
-            dto.setDistrict(industrial.getUser().getUserProfile().getAddressDistrict());
+        if (industrial.getUser() != null) {
             dto.setUserId(industrial.getUser().getId());
+            if (industrial.getUser().getUserProfile() != null) {
+                dto.setDistrict(industrial.getUser().getUserProfile().getAddressDistrict());
+            }
         }
 
         // Get images

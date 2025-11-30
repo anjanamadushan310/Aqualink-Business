@@ -8,6 +8,7 @@ import OrderHistory from '../../components/farmowner/OrderHistory';
 import CanceledOrders from '../../components/farmowner/CanceledOrders';
 import DashboardFooter from '../../components/common/DashboardFooter';
 import RoleBasedRoute from '../../components/common/RoleBasedRoute';
+import SellerChatPanel from '../../components/chat/SellerChatPanel';
 import { ROLES } from '../../utils/roleUtils';
 
 
@@ -51,6 +52,11 @@ const FarmOwnerDashboard= () => {
             <Route path="create-ads" element={
               <RoleBasedRoute allowedRoles={[ROLES.FARM_OWNER]}>
                 <FishAdsForm />
+              </RoleBasedRoute>
+            } />
+            <Route path="messages" element={
+              <RoleBasedRoute allowedRoles={[ROLES.FARM_OWNER]}>
+                <SellerChatPanel />
               </RoleBasedRoute>
             } />
           </Routes>

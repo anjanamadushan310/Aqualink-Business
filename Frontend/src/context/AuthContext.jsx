@@ -112,7 +112,7 @@ export const AuthProvider = ({ children }) => {
       console.log('Roles (raw):', response.roles);
       console.log('===========================');
 
-      const { token: authToken, roles: rolesData, nicNumber, userId } = response;
+      const { token: authToken, roles: rolesData, nicNumber, userId, userName } = response;
       
       // Extract role names from Role objects
       // Backend returns: [{id: 1, name: "SHOP_OWNER"}, ...]
@@ -135,7 +135,8 @@ export const AuthProvider = ({ children }) => {
         email,
         roles: roleNames,
         nicNumber,
-        userId
+        userId,
+        name: userName
       };
 
       // Store in localStorage

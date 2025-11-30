@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
@@ -78,6 +79,15 @@ public class Service {
     @jakarta.persistence.Transient
     private String district; // Service provider's district from profile
 
+    @jakarta.persistence.Transient
+    private String providerName; // Service provider's name from user profile
+
+    @jakarta.persistence.Transient
+    private Double averageRating; // Calculated average rating from reviews
+
+    @jakarta.persistence.Transient
+    private Long totalReviews; // Total number of reviews
+
     @Column(nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -88,9 +98,11 @@ public class Service {
     private Long approvedBy; // Admin ID who approved
 
     @OneToMany(mappedBy = "service", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<ServiceBooking> bookings;
 
     @OneToMany(mappedBy = "service", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<ServiceReview> reviews;
 
     public enum ApprovalStatus {

@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import Sidebar from '../../components/serviceprovider/Sidebar';
+import ServiceOverview from '../../components/serviceprovider/ServiceOverview';
 import ServiceHistory from '../../components/serviceprovider/ServiceHistory';
 import ServiceRequests from './../../components/serviceprovider/ServiceRequests';
 import ServiceAdsForm from '../../components/serviceprovider/ServiceAdsForm';
+import SellerChatPanel from '../../components/chat/SellerChatPanel';
 import DashboardFooter from '../../components/common/DashboardFooter';
 import RoleBasedRoute from '../../components/common/RoleBasedRoute';
 import { ROLES } from '../../utils/roleUtils';
@@ -25,10 +27,20 @@ const ServiceProviderDashboard= () => {
       <div className="lg:ml-64 flex flex-col flex-1">
         <main className="p-4 lg:p-8 flex-1">
           <Routes>
-            <Route index element={<Navigate to="service-requests" replace />} />
+            <Route index element={<Navigate to="overview" replace />} />
+            <Route path="overview" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SERVICE_PROVIDER]}>
+                <ServiceOverview />
+              </RoleBasedRoute>
+            } />
             <Route path="service-requests" element={
               <RoleBasedRoute allowedRoles={[ROLES.SERVICE_PROVIDER]}>
                 <ServiceRequests />
+              </RoleBasedRoute>
+            } />
+            <Route path="my-services" element={
+              <RoleBasedRoute allowedRoles={[ROLES.SERVICE_PROVIDER]}>
+                <ServiceAdsForm />
               </RoleBasedRoute>
             } />
             <Route path="service-history" element={
@@ -36,9 +48,9 @@ const ServiceProviderDashboard= () => {
                 <ServiceHistory />
               </RoleBasedRoute>
             } />
-            <Route path="create-ads" element={
+            <Route path="messages" element={
               <RoleBasedRoute allowedRoles={[ROLES.SERVICE_PROVIDER]}>
-                <ServiceAdsForm />
+                <SellerChatPanel />
               </RoleBasedRoute>
             } />
           </Routes>

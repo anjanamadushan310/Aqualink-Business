@@ -27,6 +27,9 @@ public class CartService {
     @Autowired
     private IndustrialStuffRepository industrialStuffRepository;
 
+    @Autowired
+    private ServiceRepository serviceRepository;
+
     public Cart getCartByUserEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -75,6 +78,10 @@ public class CartService {
                 newItem.setPrice(fish.getPrice());
                 newItem.setProductName(fish.getName());
                 
+                if (fish.getImagePaths() != null && !fish.getImagePaths().isEmpty()) {
+                    newItem.setImage(fish.getImagePaths().get(0));
+                }
+
                 // Set seller information
                 User seller = fish.getUser();
                 newItem.setSellerId(seller.getId());
@@ -93,8 +100,34 @@ public class CartService {
                 newItem.setPrice(industrialStuff.getPrice());
                 newItem.setProductName(industrialStuff.getName());
                 
+                if (industrialStuff.getImagePaths() != null && !industrialStuff.getImagePaths().isEmpty()) {
+                    newItem.setImage(industrialStuff.getImagePaths().get(0));
+                }
+
                 // Set seller information
                 User seller = industrialStuff.getUser();
+                newItem.setSellerId(seller.getId());
+                newItem.setSellerName(seller.getName());
+                
+                // Get business name from user profile
+                if (seller.getUserProfile() != null && seller.getUserProfile().getBusinessName() != null) {
+                    newItem.setBusinessName(seller.getUserProfile().getBusinessName());
+                } else {
+                    newItem.setBusinessName(seller.getName() + "'s Business");
+                }
+            } else if ("service".equalsIgnoreCase(productType)) {
+                com.example.aqualink.entity.Service service = serviceRepository.findById(productId)
+                        .orElseThrow(() -> new RuntimeException("Service not found"));
+                newItem.setPrice(service.getPrice().doubleValue());
+                newItem.setProductName(service.getName());
+                
+                if (service.getImagePaths() != null && !service.getImagePaths().isEmpty()) {
+                    newItem.setImage(service.getImagePaths().get(0));
+                }
+
+                // Set seller information
+                User seller = userRepository.findById(service.getServiceProviderId())
+                        .orElseThrow(() -> new RuntimeException("Service provider not found"));
                 newItem.setSellerId(seller.getId());
                 newItem.setSellerName(seller.getName());
                 

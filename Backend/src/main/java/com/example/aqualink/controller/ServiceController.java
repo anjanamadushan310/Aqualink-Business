@@ -1,5 +1,7 @@
 package com.example.aqualink.controller;
 
+import java.util.Map;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -86,7 +88,7 @@ public class ServiceController {
     }
 
     @PostMapping("/reviews")
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('SHOP_OWNER')")
     public ResponseEntity<ServiceReview> addReview(
             @Valid @RequestBody ServiceReviewRequestDTO request,
             HttpServletRequest httpRequest) {
@@ -96,8 +98,27 @@ public class ServiceController {
         return ResponseEntity.ok(review);
     }
 
+    @GetMapping("/{serviceId}/reviews")
+    public ResponseEntity<Page<ServiceReview>> getServiceReviews(
+            @PathVariable Long serviceId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<ServiceReview> reviews = serviceService.getServiceReviews(serviceId, pageable);
+        return ResponseEntity.ok(reviews);
+    }
+
+    @GetMapping("/{serviceId}/reviews/summary")
+    public ResponseEntity<Map<String, Object>> getServiceReviewsSummary(
+            @PathVariable Long serviceId) {
+
+        Map<String, Object> summary = serviceService.getServiceReviewsSummary(serviceId);
+        return ResponseEntity.ok(summary);
+    }
+
     @GetMapping("/my-bookings")
-    @PreAuthorize("hasRole('CUSTOMER')")
+    @PreAuthorize("hasRole('CUSTOMER') or hasRole('SHOP_OWNER')")
     public ResponseEntity<Page<ServiceBooking>> getMyBookings(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,

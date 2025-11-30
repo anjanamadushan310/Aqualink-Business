@@ -19,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.example.aqualink.dto.BookingUpdateRequestDTO;
 import com.example.aqualink.dto.ServiceRequestDTO;
+import com.example.aqualink.dto.ServiceProviderStatsDTO;
 import com.example.aqualink.entity.Service;
 import com.example.aqualink.entity.ServiceBooking;
 import com.example.aqualink.security.util.JwtUtil;
@@ -99,6 +100,13 @@ public class ServiceProviderController {
         Long serviceProviderId = getCurrentUserId(httpRequest);
         ServiceBooking booking = serviceService.updateBookingStatus(id, request, serviceProviderId);
         return ResponseEntity.ok(booking);
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<ServiceProviderStatsDTO> getProviderStats(HttpServletRequest httpRequest) {
+        Long serviceProviderId = getCurrentUserId(httpRequest);
+        ServiceProviderStatsDTO stats = serviceService.getProviderStatistics(serviceProviderId);
+        return ResponseEntity.ok(stats);
     }
 
     private Long getCurrentUserId(HttpServletRequest request) {

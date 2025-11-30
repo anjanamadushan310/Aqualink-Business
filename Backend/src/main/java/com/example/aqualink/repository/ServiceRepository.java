@@ -39,7 +39,13 @@ public interface ServiceRepository extends JpaRepository<Service, Long> {
     // Service provider count by status
     Long countByServiceProviderIdAndApprovalStatus(Long serviceProviderId, ApprovalStatus status);
 
+    // Count active services by provider
+    Long countByServiceProviderIdAndAvailable(Long serviceProviderId, Boolean available);
+
     // Top rated services
     @Query("SELECT s FROM Service s WHERE s.approvalStatus = 'APPROVED' AND s.available = true AND s.reviewCount > 0 ORDER BY s.reviewRate DESC")
     Page<Service> findTopRatedServices(Pageable pageable);
+
+    // Exists by name and service provider ID
+    boolean existsByNameAndServiceProviderId(String name, Long serviceProviderId);
 }

@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface ServiceReviewRepository extends JpaRepository<ServiceReview, Long> {
 
@@ -26,4 +28,8 @@ public interface ServiceReviewRepository extends JpaRepository<ServiceReview, Lo
 
     // Count reviews for a service
     Long countByServiceId(Long serviceId);
+
+    // Get all reviews for services provided by a specific provider
+    @Query("SELECT r FROM ServiceReview r WHERE r.service.serviceProviderId = :serviceProviderId")
+    List<ServiceReview> findByServiceServiceProviderId(@Param("serviceProviderId") Long serviceProviderId);
 }
