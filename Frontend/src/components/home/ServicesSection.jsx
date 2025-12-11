@@ -8,14 +8,14 @@ const ServicesSection = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredServices, setFilteredServices] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
   const [selectedCategory, setSelectedCategory] = useState('');
   const [categories, setCategories] = useState([]);
   const cardsPerPage = 8;
 
   useEffect(() => {
     fetchServicesData();
-  }, [currentPage, selectedCategory]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCategory]);
 
   useEffect(() => {
     // Extract unique categories
@@ -25,18 +25,21 @@ const ServicesSection = () => {
 
   useEffect(() => {
     if (searchQuery.trim() === '') {
-      fetchServicesData();
+      setFilteredServices(servicesList);
+      setCurrentPage(1);
     } else {
       searchServices();
     }
-  }, [searchQuery]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, servicesList]);
 
   const fetchServicesData = async () => {
     try {
       setLoading(true);
+      // Fetch all data for client-side pagination and sorting
       const params = new URLSearchParams({
-        page: currentPage - 1,
-        size: cardsPerPage
+        page: 0,
+        size: 1000 // Get all services
       });
 
       let url = 'http://localhost:8080/api/services';
@@ -47,9 +50,15 @@ const ServicesSection = () => {
       const response = await fetch(`${url}?${params}`);
       const data = await response.json();
       
-      setServicesList(data.content || []);
-      setFilteredServices(data.content || []);
-      setTotalPages(data.totalPages || 0);
+      // Sort by average rating (highest to lowest)
+      const sortedContent = (data.content || []).sort((a, b) => {
+        const ratingA = a.averageRating || 0;
+        const ratingB = b.averageRating || 0;
+        return ratingB - ratingA;
+      });
+      
+      setServicesList(sortedContent);
+      setFilteredServices(sortedContent);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching services data:', error);
@@ -63,14 +72,20 @@ const ServicesSection = () => {
       const params = new URLSearchParams({
         query: searchQuery,
         page: 0,
-        size: cardsPerPage * 10 // Get more results for search
+        size: 1000 // Get all results for search
       });
 
       const response = await fetch(`http://localhost:8080/api/services/search?${params}`);
       const data = await response.json();
       
-      setFilteredServices(data.content || []);
-      setTotalPages(Math.ceil((data.content || []).length / cardsPerPage));
+      // Sort search results by average rating (highest to lowest)
+      const sortedResults = (data.content || []).sort((a, b) => {
+        const ratingA = a.averageRating || 0;
+        const ratingB = b.averageRating || 0;
+        return ratingB - ratingA;
+      });
+      
+      setFilteredServices(sortedResults);
       setCurrentPage(1);
       setLoading(false);
     } catch (error) {
@@ -78,6 +93,8 @@ const ServicesSection = () => {
       setLoading(false);
     }
   };
+
+  const totalPages = Math.ceil(filteredServices.length / cardsPerPage);
 
   const handlePrevPage = () => {
     setCurrentPage((prev) => Math.max(prev - 1, 1));
@@ -165,25 +182,27 @@ const ServicesSection = () => {
             <button
               onClick={handlePrevPage}
               disabled={currentPage === 1}
-              className={`p-2 rounded-full border border-gray-300 ${
-                currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'
+              className={`px-3 py-2 sm:px-4 sm:py-2 rounded-md sm:rounded-full border border-gray-300 text-sm sm:text-base ${
+                currentPage === 1 ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'hover:bg-gray-200 bg-white'
               }`}
               aria-label="Previous"
             >
-              &#8592;
+              <span className="hidden sm:inline">&#8592;</span>
+              <span className="sm:hidden">← Prev</span>
             </button>
-            <span className="text-gray-700">
+            <span className="text-gray-700 text-sm sm:text-base font-medium">
               Page {currentPage} of {totalPages}
             </span>
             <button
               onClick={handleNextPage}
               disabled={currentPage === totalPages}
-              className={`p-2 rounded-full border border-gray-300 ${
-                currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'
+              className={`px-3 py-2 sm:px-4 sm:py-2 rounded-md sm:rounded-full border border-gray-300 text-sm sm:text-base ${
+                currentPage === totalPages ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'hover:bg-gray-200 bg-white'
               }`}
               aria-label="Next"
             >
-              &#8594;
+              <span className="hidden sm:inline">&#8594;</span>
+              <span className="sm:hidden">Next →</span>
             </button>
           </div>
 

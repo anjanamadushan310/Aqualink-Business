@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Clock, Send, Fish, Users, MessageCircle, Headphones } from 'lucide-react';
+import { Mail, Phone, MapPin, Send, Fish, Users, MessageCircle, Headphones } from 'lucide-react';
 import Footer from '../components/home/Footer';
+import { API_URL } from '../config';
 
 const Contact = () => {
   const [formData, setFormData] = useState({
@@ -12,6 +13,8 @@ const Contact = () => {
   });
 
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -19,25 +22,48 @@ const Contact = () => {
       ...prev,
       [name]: value
     }));
+    setErrorMessage('');
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Here you would typically send the form data to your backend
-    console.log('Form submitted:', formData);
-    setIsSubmitted(true);
+    setIsSubmitting(true);
+    setErrorMessage('');
     
-    // Reset form after 3 seconds
-    setTimeout(() => {
-      setIsSubmitted(false);
-      setFormData({
-        name: '',
-        email: '',
-        subject: '',
-        userType: '',
-        message: ''
+    try {
+      const response = await fetch(`${API_URL}/contact/submit`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
       });
-    }, 3000);
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        setIsSubmitted(true);
+        
+        // Reset form after 3 seconds
+        setTimeout(() => {
+          setIsSubmitted(false);
+          setFormData({
+            name: '',
+            email: '',
+            subject: '',
+            userType: '',
+            message: ''
+          });
+        }, 3000);
+      } else {
+        setErrorMessage(data.error || 'Failed to send message. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting contact form:', error);
+      setErrorMessage('Failed to send message. Please check your connection and try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const contactInfo = [
@@ -47,34 +73,21 @@ const Contact = () => {
       details: [
         "Institute of Technology",
         "University of Moratuwa",
-        "Moratuwa, Sri Lanka"
+        "Homagama, Sri Lanka"
       ]
     },
     {
       icon: <Mail className="w-6 h-6 text-green-600" />,
       title: "Email",
       details: [
-        "info@aqualink.lk",
-        "support@aqualink.lk",
-        "admin@aqualink.lk"
+        "aqualink.demo@gmail.com"
       ]
     },
     {
       icon: <Phone className="w-6 h-6 text-purple-600" />,
       title: "Phone",
       details: [
-        "+94 11 2640001",
-        "+94 77 123 4567",
-        "Hotline: 1919"
-      ]
-    },
-    {
-      icon: <Clock className="w-6 h-6 text-orange-600" />,
-      title: "Business Hours",
-      details: [
-        "Monday - Friday: 8:00 AM - 6:00 PM",
-        "Saturday: 9:00 AM - 4:00 PM",
-        "Sunday: Closed"
+        "+94 78 436 7410"
       ]
     }
   ];
@@ -87,7 +100,6 @@ const Contact = () => {
     "Delivery Person",
     "Service Provider",
     "Industrial Stuff Seller",
-    "NAQDA Officer",
     "Other"
   ];
 
@@ -240,12 +252,28 @@ const Contact = () => {
                   ></textarea>
                 </div>
 
+                {errorMessage && (
+                  <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+                    {errorMessage}
+                  </div>
+                )}
+
                 <button
                   onClick={handleSubmit}
-                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-4 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2"
+                  disabled={isSubmitting}
+                  className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 text-white py-4 px-6 rounded-lg font-semibold hover:from-blue-700 hover:to-cyan-700 transition-all duration-300 transform hover:scale-105 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 >
-                  <Send className="w-5 h-5" />
-                  Send Message
+                  {isSubmitting ? (
+                    <>
+                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5" />
+                      Send Message
+                    </>
+                  )}
                 </button>
               </div>
             )}
@@ -267,51 +295,6 @@ const Contact = () => {
               </div>
             ))}
 
-            {/* Emergency Contact */}
-            <div className="bg-gradient-to-r from-red-500 to-red-600 rounded-xl shadow-lg p-6 text-white">
-              <h3 className="text-lg font-semibold mb-2">Emergency Support</h3>
-              <p className="text-red-100 mb-3">
-                For urgent issues affecting live fish transportation or critical system failures:
-              </p>
-              <div className="flex items-center gap-2 text-lg font-semibold">
-                <Phone className="w-5 h-5" />
-                <span>Emergency Hotline: 1919</span>
-              </div>
-              <p className="text-red-100 text-sm mt-2">Available 24/7</p>
-            </div>
-
-            {/* NAQDA Information */}
-            <div className="bg-gradient-to-r from-green-600 to-green-700 rounded-xl shadow-lg p-6 text-white">
-              <h3 className="text-lg font-semibold mb-2">NAQDA Verification</h3>
-              <p className="text-green-100 mb-3">
-                For questions about NAQDA document verification and certification:
-              </p>
-              <div className="space-y-1 text-sm text-green-100">
-                <p>Contact your regional NAQDA office</p>
-                <p>Or reach out through our platform for assistance</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* FAQ Section */}
-        <div className="mt-12 bg-white rounded-2xl shadow-lg p-8">
-          <h2 className="text-3xl font-bold text-center text-gray-800 mb-8">Frequently Asked Questions</h2>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">How do I get verified on AQUALINK?</h3>
-              <p className="text-gray-600 mb-4">Upload your NAQDA documents or business permits during registration. Our verification team will review and approve within 2-3 business days.</p>
-              
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">What payment methods are supported?</h3>
-              <p className="text-gray-600 mb-4">AQUALINK supports cash on delivery and online payment methods. More payment options will be added in future updates.</p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">How can I track my fish delivery?</h3>
-              <p className="text-gray-600 mb-4">Once your order is confirmed, you'll receive real-time tracking updates through the platform and notifications.</p>
-              
-              <h3 className="text-lg font-semibold text-gray-800 mb-2">Can I cancel or modify my order?</h3>
-              <p className="text-gray-600 mb-4">Orders can be modified or canceled before the seller confirms them. Contact support for assistance with specific cases.</p>
-            </div>
           </div>
         </div>
       </div>

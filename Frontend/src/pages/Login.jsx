@@ -60,7 +60,7 @@ function LoginForm({ onLogin, onClose }) {
       
     } catch (error) {
       console.error("Login error:", error);
-      setErrMsg(error.message || "Login failed. Please check credentials.");
+      setErrMsg('Email or password is incorrect. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -178,23 +178,19 @@ function LoginForm({ onClose }) {
     } catch (error) {
       console.error("Login error:", error);
       
-      // Enhanced error message handling
-      let displayMessage = "Login failed. Please try again.";
+      const rawMessage = error?.message || '';
+      const normalizedMessage = rawMessage.toLowerCase();
+      let displayMessage = "Email or password is incorrect. Please try again.";
       
-      if (error.message) {
-        displayMessage = error.message;
-      }
-      
-      // Make specific error messages more user-friendly
-      if (error.message?.includes('pending admin approval')) {
+      if (normalizedMessage.includes('pending admin approval')) {
         displayMessage = "Your account is awaiting admin approval. Please wait for verification to complete.";
-      } else if (error.message?.includes('rejected by the administrator')) {
+      } else if (normalizedMessage.includes('rejected by the administrator')) {
         displayMessage = "Your account has been rejected. Please contact support for assistance.";
-      } else if (error.message?.includes('deactivated')) {
+      } else if (normalizedMessage.includes('deactivated')) {
         displayMessage = "Your account has been deactivated. Please contact support.";
-      } else if (error.message?.includes('Invalid email or password')) {
+      } else if (normalizedMessage.includes('invalid email or password')) {
         displayMessage = "Invalid email or password. Please check your credentials.";
-      } else if (error.message === 'Network Error') {
+      } else if (rawMessage === 'Network Error') {
         displayMessage = "Unable to connect to server. Please check your internet connection.";
       }
       
@@ -209,6 +205,8 @@ function LoginForm({ onClose }) {
     }
   };
 
+  const isPendingApproval = errMsg?.toLowerCase().includes('admin approval');
+
   return (
     <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50"> 
       <form
@@ -220,14 +218,24 @@ function LoginForm({ onClose }) {
         </h2>
 
         {errMsg && (
-          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg flex items-start gap-3 animate-fadeIn">
+          <div className={`border-l-4 p-4 rounded-lg flex items-start gap-3 animate-fadeIn ${
+            isPendingApproval
+              ? 'bg-yellow-50 border-yellow-500 text-yellow-800'
+              : 'bg-red-50 border-red-500 text-red-800'
+          }`}>
             <div className="flex-shrink-0 mt-0.5">
-              <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
+              {isPendingApproval ? (
+                <svg className="h-5 w-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.721-1.36 3.486 0l5.58 9.921c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.492-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 10-2 0 1 1 0 002 0zm-1-2a1 1 0 01-1-1V7a1 1 0 112 0v3a1 1 0 01-1 1z" clipRule="evenodd" />
+                </svg>
+              ) : (
+                <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                </svg>
+              )}
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-red-800">{errMsg}</p>
+              <p className="text-sm font-medium">{errMsg}</p>
             </div>
             <button
               type="button"

@@ -1,10 +1,11 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import apiService from '../services/apiService';
 import { API_ENDPOINTS } from '../services/apiConfig';
+import { useNotification } from './NotificationContext';
 
 export const AuthContext = createContext();
 
-export const useAuth = () => {
+const useAuthContext = () => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
@@ -12,17 +13,76 @@ export const useAuth = () => {
   return context;
 };
 
+export const useAuth = () => useAuthContext();
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
   const [activeRole, setActiveRoleState] = useState(localStorage.getItem('activeRole') || null);
+  const { notifyWarning } = useNotification();
 
   // Set active role and persist to localStorage
-  const setActiveRole = (role) => {
+  const setActiveRole = useCallback((role) => {
     localStorage.setItem('activeRole', role);
     setActiveRoleState(role);
-  };
+  }, []);
+
+  const showSessionExpiredNotice = useCallback(() => {
+    if (notifyWarning) {
+      notifyWarning('Your session has expired. Please log in again.');
+    }
+  }, [notifyWarning]);
+
+  const logout = useCallback(() => {
+    console.log('=== LOGOUT INITIATED ===');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('activeRole');
+    localStorage.removeItem('aqualink_order_data');
+    localStorage.removeItem('aqualink_received_quotes');
+    localStorage.removeItem('customerOrders');
+
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith('aqualink_quote_request_')) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+
+    console.log('Cleared localStorage items:', keysToRemove.length + 5);
+
+    sessionStorage.clear();
+
+    setToken(null);
+    setUser(null);
+    setActiveRoleState(null);
+
+    console.log('Auth state cleared');
+    console.log('========================');
+
+    window.dispatchEvent(new CustomEvent('user-logout'));
+  }, []);
+
+  const checkTokenExpiration = useCallback(() => {
+    if (!token) return;
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const currentTime = Date.now() / 1000;
+
+      if (payload.exp < currentTime) {
+        console.log('Token expired, logging out user');
+        logout();
+        showSessionExpiredNotice();
+      }
+    } catch (error) {
+      console.error('Error checking token expiration:', error);
+      logout();
+      showSessionExpiredNotice();
+    }
+  }, [token, logout, showSessionExpiredNotice]);
 
   // Check if user is authenticated on app load
   useEffect(() => {
@@ -69,7 +129,7 @@ export const AuthProvider = ({ children }) => {
     // Listen for token expiration events from API calls
     const handleTokenExpired = () => {
       logout();
-      alert('Your session has expired. Please log in again.');
+      showSessionExpiredNotice();
     };
     
     window.addEventListener('authTokenExpired', handleTokenExpired);
@@ -77,34 +137,18 @@ export const AuthProvider = ({ children }) => {
     return () => {
       window.removeEventListener('authTokenExpired', handleTokenExpired);
     };
-  }, [token]);
-
-  const checkTokenExpiration = () => {
-    if (!token) return;
-    
-    try {
-      // Decode JWT token to check expiration
-      const payload = JSON.parse(atob(token.split('.')[1]));
-      const currentTime = Date.now() / 1000;
-      
-      if (payload.exp < currentTime) {
-        // Token is expired, logout user
-        console.log('Token expired, logging out user');
-        logout();
-        alert('Your session has expired. Please log in again.');
-      }
-    } catch (error) {
-      console.error('Error checking token expiration:', error);
-      logout();
-    }
-  };
+  }, [token, activeRole, logout, setActiveRole, checkTokenExpiration, showSessionExpiredNotice]);
 
   const login = async (email, password) => {
     try {
-      const response = await apiService.post(API_ENDPOINTS.LOGIN, {
-        email,
-        password
-      });
+      const response = await apiService.post(
+        API_ENDPOINTS.LOGIN,
+        {
+          email,
+          password
+        },
+        { skipAuthHandling: true }
+      );
 
       console.log('=== LOGIN RESPONSE DEBUG ===');
       console.log('Full response:', response);
@@ -159,47 +203,22 @@ export const AuthProvider = ({ children }) => {
       return { ...response, roles: roleNames };
     } catch (error) {
       console.error('Login error:', error);
-      throw error;
-    }
-  };
+      const originalMessage = error?.message || '';
+      const lowerMessage = originalMessage.toLowerCase();
+      let friendlyMessage = originalMessage || 'Email or password is incorrect. Please try again.';
 
-  const logout = () => {
-    console.log('=== LOGOUT INITIATED ===');
-    
-    // Clear authentication data
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    localStorage.removeItem('activeRole');
-    
-    // Clear shopping/ordering related data
-    localStorage.removeItem('aqualink_order_data');
-    localStorage.removeItem('aqualink_received_quotes');
-    localStorage.removeItem('customerOrders');
-    
-    // Clear seller-specific quote requests
-    // Find and remove all aqualink_quote_request_* keys
-    const keysToRemove = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && key.startsWith('aqualink_quote_request_')) {
-        keysToRemove.push(key);
+      if (
+        lowerMessage.includes('session has expired') ||
+        lowerMessage.includes('invalid email or password') ||
+        lowerMessage.includes('bad credentials')
+      ) {
+        friendlyMessage = 'Email or password is incorrect. Please try again.';
       }
+
+      const normalizedError = new Error(friendlyMessage);
+      normalizedError.originalError = error;
+      throw normalizedError;
     }
-    keysToRemove.forEach(key => localStorage.removeItem(key));
-    
-    console.log('Cleared localStorage items:', keysToRemove.length + 5);
-    
-    // Clear session storage for temporary data
-    sessionStorage.clear();
-    
-    setToken(null);
-    setUser(null);
-    
-    console.log('Auth state cleared');
-    console.log('========================');
-    
-    // Dispatch a custom event to trigger navigation to home page and cart clearing
-    window.dispatchEvent(new CustomEvent('user-logout'));
   };
 
   const hasRole = (role) => {
@@ -236,3 +255,5 @@ export const AuthProvider = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
+export { useAuthContext };

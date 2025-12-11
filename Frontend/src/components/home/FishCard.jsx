@@ -1,9 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ProductDetails from './ProductDetails.jsx';
+import apiService from '../../services/apiService';
 
 const FishCard = ({ fish, onPurchaseSuccess }) => {
   const [showProductDetails, setShowProductDetails] = useState(false);
   const [imageLoading, setImageLoading] = useState(true);
+  const [averageRating, setAverageRating] = useState(
+    typeof fish.averageRating === 'number'
+      ? fish.averageRating
+      : typeof fish.rating === 'number'
+        ? fish.rating
+        : 0
+  );
+  const [reviewCount, setReviewCount] = useState(
+    Number(fish.totalReviews ?? fish.reviewCount ?? fish.ratingsCount ?? 0)
+  );
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('en-LK', {
@@ -44,6 +55,28 @@ const FishCard = ({ fish, onPurchaseSuccess }) => {
     setImageLoading(false);
     e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2NjYyIvPjwvc3ZnPg==';
   };
+
+  useEffect(() => {
+    let isActive = true;
+
+    const fetchReviewSummary = async () => {
+      if (!fish?.id) return;
+      try {
+        const summary = await apiService.get(`/product-reviews/product/${fish.id}/FISH/summary`);
+        if (!isActive) return;
+        setAverageRating(typeof summary?.averageRating === 'number' ? summary.averageRating : 0);
+        setReviewCount(Number(summary?.totalReviews ?? 0));
+      } catch (error) {
+        console.error('Failed to fetch review summary for fish', fish?.id, error);
+      }
+    };
+
+    fetchReviewSummary();
+
+    return () => {
+      isActive = false;
+    };
+  }, [fish?.id]);
 
   return (
     <>
@@ -89,14 +122,17 @@ const FishCard = ({ fish, onPurchaseSuccess }) => {
             
             {/* Rating and Sold Count */}
             <div className="flex items-center gap-3 text-sm">
-              {fish.rating > 0 && (
-                <div className="flex items-center gap-1">
-                  <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
-                    <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
-                  </svg>
-                  <span className="font-medium text-gray-700">{fish.rating.toFixed(1)}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-1">
+                <svg className="w-4 h-4 text-yellow-400 fill-current" viewBox="0 0 20 20">
+                  <path d="M10 15l-5.878 3.09 1.123-6.545L.489 6.91l6.572-.955L10 0l2.939 5.955 6.572.955-4.756 4.635 1.123 6.545z"/>
+                </svg>
+                <span className="font-medium text-gray-700">
+                  {averageRating > 0 ? averageRating.toFixed(1) : '0.0'}
+                </span>
+                <span className="text-xs text-gray-500">
+                  ({reviewCount} review{reviewCount === 1 ? '' : 's'})
+                </span>
+              </div>
               {fish.totalSold > 0 && (
                 <span className="text-gray-500">
                   <span className="font-medium text-blue-600">{fish.totalSold}</span> sold

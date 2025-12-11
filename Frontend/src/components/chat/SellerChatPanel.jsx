@@ -142,9 +142,12 @@ const SellerChatPanel = () => {
   const getImageUrl = (path) => {
     if (!path) return '';
     if (path.startsWith('http')) return path;
-    
-    // Remove leading slash if present to avoid double slashes
-    const cleanPath = path.startsWith('/') ? path.substring(1) : path;
+
+    let cleanPath = path.startsWith('/') ? path.substring(1) : path;
+    if (!cleanPath.startsWith('uploads/')) {
+      cleanPath = `uploads/${cleanPath}`;
+    }
+
     return `${API_URL.replace('/api/v1', '').replace('/api', '')}/${cleanPath}`;
   };
 

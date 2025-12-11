@@ -127,7 +127,7 @@ const BlogPostForm = () => {
       }
       
       // Navigate to the blog management page
-      navigate('/exporter/blog');
+      navigate('/dashboard/blog');
     } catch (err) {
       setError('Failed to save blog post. Please try again later.');
       console.error('Error saving blog post:', err);

@@ -1,22 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../../config';
-import { PlusCircleIcon, DocumentIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PlusCircleIcon } from '@heroicons/react/24/outline';
+import { useAuth } from '../../context/AuthContext';
 
 const AddRoleSection = ({ currentRoles, onRoleAdded }) => {
+  const { refreshUserData } = useAuth();
   const [availableRoles, setAvailableRoles] = useState([]);
   const [selectedRole, setSelectedRole] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [documents, setDocuments] = useState({
-    nicFrontDocument: null,
-    nicBackDocument: null,
-    selfieDocument: null
-  });
-  const [previewImages, setPreviewImages] = useState({
-    nicFront: null,
-    nicBack: null,
-    selfie: null
-  });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [messageType, setMessageType] = useState(''); // 'success' or 'error'
@@ -59,58 +51,12 @@ const AddRoleSection = ({ currentRoles, onRoleAdded }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRoles]);
 
-  const handleFileChange = (e, documentType) => {
-    const file = e.target.files[0];
-    if (file) {
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        alert('Please upload an image file');
-        return;
-      }
-
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('File size should not exceed 5MB');
-        return;
-      }
-
-      setDocuments(prev => ({ ...prev, [documentType]: file }));
-      
-      // Create preview
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const previewKey = documentType.replace('Document', '');
-        setPreviewImages(prev => ({ ...prev, [previewKey]: reader.result }));
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const removeFile = (documentType) => {
-    setDocuments(prev => ({ ...prev, [documentType]: null }));
-    const previewKey = documentType.replace('Document', '');
-    setPreviewImages(prev => ({ ...prev, [previewKey]: null }));
-    
-    // Clear file input
-    const fileInput = document.getElementById(documentType);
-    if (fileInput) {
-      fileInput.value = '';
-    }
-  };
-
   const validateForm = () => {
     if (!selectedRole) {
       setMessage('Please select a role');
       setMessageType('error');
       return false;
     }
-
-    if (!documents.nicFrontDocument || !documents.nicBackDocument || !documents.selfieDocument) {
-      setMessage('Please upload all required documents (NIC front, NIC back, and selfie)');
-      setMessageType('error');
-      return false;
-    }
-
     return true;
   };
 
@@ -124,51 +70,56 @@ const AddRoleSection = ({ currentRoles, onRoleAdded }) => {
     setLoading(true);
     setMessage('');
 
-    const formData = new FormData();
-    formData.append('role', selectedRole);
-    formData.append('nicFrontDocument', documents.nicFrontDocument);
-    formData.append('nicBackDocument', documents.nicBackDocument);
-    formData.append('selfieDocument', documents.selfieDocument);
-
     try {
       const token = localStorage.getItem('token');
-      await axios.post(
+      const response = await axios.post(
         `${API_URL}/users/add-role`,
-        formData,
+        { role: selectedRole },
         {
           headers: {
             'Authorization': `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data'
+            'Content-Type': 'application/json'
           }
         }
       );
 
-      setMessage('Role request submitted successfully! Please wait for admin approval.');
+      // Update token and user data in localStorage with new roles
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        
+        // Update user object with new roles from response
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          
+          // Roles now come as a proper array from backend
+          if (response.data.roles && Array.isArray(response.data.roles)) {
+            userData.roles = response.data.roles;
+            localStorage.setItem('user', JSON.stringify(userData));
+            console.log('Updated user roles:', userData.roles);
+          }
+        }
+      }
+
+      setMessage('Role added successfully!');
       setMessageType('success');
       
       // Reset form
       setSelectedRole('');
-      setDocuments({
-        nicFrontDocument: null,
-        nicBackDocument: null,
-        selfieDocument: null
-      });
-      setPreviewImages({
-        nicFront: null,
-        nicBack: null,
-        selfie: null
-      });
       setShowForm(false);
 
-      // Notify parent component
+      // Refresh user data in context to update UI immediately
+      refreshUserData();
+
+      // Notify parent component to refresh profile and available roles
       if (onRoleAdded) {
         onRoleAdded();
       }
 
-      // Clear success message after 5 seconds
+      // Clear success message after 3 seconds
       setTimeout(() => {
         setMessage('');
-      }, 5000);
+      }, 3000);
 
     } catch (error) {
       console.error('Error adding role:', error);
@@ -206,16 +157,6 @@ const AddRoleSection = ({ currentRoles, onRoleAdded }) => {
   const handleCancel = () => {
     setShowForm(false);
     setSelectedRole('');
-    setDocuments({
-      nicFrontDocument: null,
-      nicBackDocument: null,
-      selfieDocument: null
-    });
-    setPreviewImages({
-      nicFront: null,
-      nicBack: null,
-      selfie: null
-    });
     setMessage('');
   };
 
@@ -288,8 +229,7 @@ const AddRoleSection = ({ currentRoles, onRoleAdded }) => {
             ))}
           </div>
           <p className="mt-4 text-sm">
-            You can request additional roles by clicking the "Request New Role" button above.
-            All role requests require document verification and admin approval.
+            You can add additional roles by clicking the "Request New Role" button above.
           </p>
         </div>
       )}
@@ -316,126 +256,11 @@ const AddRoleSection = ({ currentRoles, onRoleAdded }) => {
             </select>
           </div>
 
-          {/* Document Upload Section */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-800">Upload Verification Documents *</h3>
-            <p className="text-sm text-gray-600">
-              Please upload clear photos of your documents. All documents are required for verification.
+          {/* Info Section */}
+          <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded">
+            <p className="text-sm text-blue-800">
+              <strong>Note:</strong> Your additional role will be activated immediately. You can start using it right away.
             </p>
-
-            {/* NIC Front */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                NIC Front Side *
-              </label>
-              <div className="flex items-center gap-4">
-                <input
-                  id="nicFrontDocument"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileChange(e, 'nicFrontDocument')}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="nicFrontDocument"
-                  className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg cursor-pointer transition-colors"
-                >
-                  <DocumentIcon className="w-5 h-5 text-gray-600" />
-                  Choose File
-                </label>
-                {documents.nicFrontDocument && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">{documents.nicFrontDocument.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeFile('nicFrontDocument')}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <XMarkIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                )}
-              </div>
-              {previewImages.nicFront && (
-                <img src={previewImages.nicFront} alt="NIC Front Preview" className="mt-2 w-48 h-32 object-cover rounded-lg border" />
-              )}
-            </div>
-
-            {/* NIC Back */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                NIC Back Side *
-              </label>
-              <div className="flex items-center gap-4">
-                <input
-                  id="nicBackDocument"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileChange(e, 'nicBackDocument')}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="nicBackDocument"
-                  className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg cursor-pointer transition-colors"
-                >
-                  <DocumentIcon className="w-5 h-5 text-gray-600" />
-                  Choose File
-                </label>
-                {documents.nicBackDocument && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">{documents.nicBackDocument.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeFile('nicBackDocument')}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <XMarkIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                )}
-              </div>
-              {previewImages.nicBack && (
-                <img src={previewImages.nicBack} alt="NIC Back Preview" className="mt-2 w-48 h-32 object-cover rounded-lg border" />
-              )}
-            </div>
-
-            {/* Selfie */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Selfie with NIC *
-              </label>
-              <div className="flex items-center gap-4">
-                <input
-                  id="selfieDocument"
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => handleFileChange(e, 'selfieDocument')}
-                  className="hidden"
-                />
-                <label
-                  htmlFor="selfieDocument"
-                  className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-lg cursor-pointer transition-colors"
-                >
-                  <DocumentIcon className="w-5 h-5 text-gray-600" />
-                  Choose File
-                </label>
-                {documents.selfieDocument && (
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-gray-600">{documents.selfieDocument.name}</span>
-                    <button
-                      type="button"
-                      onClick={() => removeFile('selfieDocument')}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <XMarkIcon className="w-5 h-5" />
-                    </button>
-                  </div>
-                )}
-              </div>
-              {previewImages.selfie && (
-                <img src={previewImages.selfie} alt="Selfie Preview" className="mt-2 w-48 h-32 object-cover rounded-lg border" />
-              )}
-            </div>
           </div>
 
           {/* Action Buttons */}
@@ -445,7 +270,7 @@ const AddRoleSection = ({ currentRoles, onRoleAdded }) => {
               disabled={loading}
               className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              {loading ? 'Submitting...' : 'Submit Role Request'}
+              {loading ? 'Adding Role...' : 'Add Role'}
             </button>
             <button
               type="button"

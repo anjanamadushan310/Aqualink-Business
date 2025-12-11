@@ -47,4 +47,51 @@ public interface ProductReviewRepository extends JpaRepository<ProductReview, Lo
     // Find verified purchase reviews only
     @Query("SELECT pr FROM ProductReview pr WHERE pr.productId = :productId AND pr.productType = :productType AND pr.verifiedPurchase = true ORDER BY pr.reviewedAt DESC")
     List<ProductReview> findVerifiedPurchaseReviews(@Param("productId") Long productId, @Param("productType") String productType);
+    
+    // Count reviews by user email
+    @Query("SELECT COUNT(pr) FROM ProductReview pr WHERE pr.user.email = :email")
+    long countByUserEmail(@Param("email") String email);
+    
+    // Admin: Get all reviews with pagination
+    @Query("SELECT pr FROM ProductReview pr ORDER BY pr.reviewedAt DESC")
+    Page<ProductReview> findAllWithPagination(Pageable pageable);
+    
+    // Admin: Search reviews by term (reviewer name, email, or comment)
+    @Query("SELECT pr FROM ProductReview pr WHERE " +
+           "LOWER(pr.user.name) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(pr.user.email) LIKE LOWER(CONCAT('%', :searchTerm, '%')) OR " +
+           "LOWER(pr.comment) LIKE LOWER(CONCAT('%', :searchTerm, '%'))")
+    Page<ProductReview> searchReviews(@Param("searchTerm") String searchTerm, Pageable pageable);
+    
+    // Admin: Filter by rating range
+    @Query("SELECT pr FROM ProductReview pr WHERE pr.rating BETWEEN :minRating AND :maxRating ORDER BY pr.reviewedAt DESC")
+    Page<ProductReview> findByRatingRange(@Param("minRating") Integer minRating, @Param("maxRating") Integer maxRating, Pageable pageable);
+    
+    // Admin: Filter by product type
+    @Query("SELECT pr FROM ProductReview pr WHERE pr.productType = :productType ORDER BY pr.reviewedAt DESC")
+    Page<ProductReview> findByProductType(@Param("productType") String productType, Pageable pageable);
+    
+    // Admin: Get total count
+    @Query("SELECT COUNT(pr) FROM ProductReview pr")
+    Long getTotalCount();
+    
+    // Admin: Get average rating for all products
+    @Query("SELECT AVG(pr.rating) FROM ProductReview pr")
+    Double getOverallAverageRating();
+    
+    // Admin: Get rating distribution for all products
+    @Query("SELECT pr.rating, COUNT(pr) FROM ProductReview pr GROUP BY pr.rating ORDER BY pr.rating DESC")
+    List<Object[]> getOverallRatingDistribution();
+    
+    // Admin: Count verified purchase reviews
+    @Query("SELECT COUNT(pr) FROM ProductReview pr WHERE pr.verifiedPurchase = true")
+    Long countVerifiedPurchaseReviews();
+    
+    // Admin: Get reviews this month
+    @Query("SELECT COUNT(pr) FROM ProductReview pr WHERE FUNCTION('YEAR', pr.reviewedAt) = FUNCTION('YEAR', CURRENT_DATE) AND FUNCTION('MONTH', pr.reviewedAt) = FUNCTION('MONTH', CURRENT_DATE)")
+    Long countReviewsThisMonth();
+    
+    // Admin: Get reviews this week
+    @Query("SELECT COUNT(pr) FROM ProductReview pr WHERE FUNCTION('YEARWEEK', pr.reviewedAt) = FUNCTION('YEARWEEK', CURRENT_DATE)")
+    Long countReviewsThisWeek();
 }

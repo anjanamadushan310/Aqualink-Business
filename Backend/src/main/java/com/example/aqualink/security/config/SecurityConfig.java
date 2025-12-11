@@ -59,7 +59,7 @@ public class SecurityConfig {
                         .requestMatchers("/uploads/profile-images/**").permitAll()
                         .requestMatchers("/uploads/service_images/**").permitAll()
                         // Allow API endpoints
-                        .requestMatchers("/api/auth/**","/api/users/**", "/api/banners/**", "/api/v1/fish/**","/api/fish/**","/api/profile/**","/api/industrial-ads/**","/api/industrial/**","/api/v1/industrial/**","/api/services/**","/api/service-provider/services/**","/api/blogs/**").permitAll()
+                        .requestMatchers("/api/auth/**","/api/users/**", "/api/banners/**", "/api/v1/fish/**","/api/fish/**","/api/profile/**","/api/industrial-ads/**","/api/industrial/**","/api/v1/industrial/**","/api/services/**","/api/service-provider/services/**","/api/blogs/**","/api/contact/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/fish-ads").permitAll() // Allow POST for fish ads
                         .requestMatchers(HttpMethod.GET, "/api/fish-ads").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/delivery-quotes/create-initial-order").permitAll() // Temporarily allow this endpoint for testing
@@ -92,11 +92,10 @@ public class SecurityConfig {
         // Parse allowed origins from property (comma-separated)
         List<String> origins = Arrays.asList(allowedOrigins.split(","));
         
-        // Use setAllowedOriginPatterns instead of setAllowedOrigins when allowCredentials is true
-        // This fixes: "When allowCredentials is true, allowedOrigins cannot contain the special value *"
-        configuration.setAllowedOriginPatterns(origins);
+        // Explicitly configure allowed origins for credentialed requests
+        configuration.setAllowedOrigins(origins);
         
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept", "X-Requested-With"));
         configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);

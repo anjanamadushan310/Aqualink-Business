@@ -29,12 +29,25 @@ const LoginModal = ({ isOpen, onClose, onSuccess }) => {
           onSuccess();
         }
         onClose();
-      } else {
-        setError('Invalid email or password');
       }
     } catch (error) {
-      console.error(error);
-      setError('Login failed. Please try again.');
+      console.error('Login error:', error);
+      const message = (error?.message || '').toLowerCase();
+      let friendlyMessage = 'Email or password is incorrect. Please try again.';
+
+      if (message.includes('session has expired')) {
+        friendlyMessage = 'Email or password is incorrect. Please try again.';
+      } else if (message.includes('pending admin approval')) {
+        friendlyMessage = 'Your account is awaiting admin approval. Please wait for verification to complete.';
+      } else if (message.includes('rejected by the administrator')) {
+        friendlyMessage = 'Your account has been rejected. Please contact support for assistance.';
+      } else if (message.includes('deactivated')) {
+        friendlyMessage = 'Your account has been deactivated. Please contact support.';
+      } else if (message.includes('invalid email or password')) {
+        friendlyMessage = 'Invalid email or password. Please check your credentials.';
+      }
+
+      setError(friendlyMessage);
     } finally {
       setIsLoading(false);
     }

@@ -37,7 +37,8 @@ export default function BannerCarousel() {
   }
 
   return (
-    <div className="w-screen h-[150px] xs:h-[180px] sm:h-[220px] md:h-[280px] lg:h-[350px] xl:h-[400px] 2xl:h-[450px] relative overflow-hidden bg-gradient-to-br from-orange-500 via-red-500 to-pink-600">
+    <div className="w-screen px-3 sm:px-4 lg:px-8">
+      <div className="w-full h-[150px] xs:h-[180px] sm:h-[220px] md:h-[280px] lg:h-[350px] xl:h-[400px] 2xl:h-[450px] relative overflow-hidden rounded-lg shadow-2xl bg-black">
       
       {/* Main Banner Container */}
       <div className="relative w-full h-full">
@@ -114,19 +115,8 @@ export default function BannerCarousel() {
           </>
         )}
 
-        {/* Bottom Wave Effect - Fully Responsive */}
-        <div className="absolute bottom-0 left-0 w-full">
-          <svg 
-            viewBox="0 0 1200 120" 
-            preserveAspectRatio="none" 
-            className="relative block w-full h-4 xs:h-6 sm:h-8 md:h-12 lg:h-16"
-          >
-            <path 
-              d="M985.66,92.83C906.67,72,823.78,31,743.84,14.19c-82.26-17.34-168.06-16.33-250.45.39-57.84,11.73-114,31.07-172,41.86A600.21,600.21,0,0,1,0,27.35V120H1200V95.8C1132.19,118.92,1055.71,111.31,985.66,92.83Z" 
-              fill="white"
-            />
-          </svg>
-        </div>
+        {/* Bottom Wave removed to keep clean rectangle */}
+      </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import cartService from '../services/cartService';
 import { useAuth } from './AuthContext';
 
@@ -19,37 +19,15 @@ export const CartProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
   const { isAuthenticated, user, token } = useAuth();
 
-  // Create stable references for authentication state
-  const isUserAuthenticated = useMemo(() => isAuthenticated(), [token]);
-  const userId = useMemo(() => user?.id, [user]);
+  const effectiveUserId = user?.userId ?? user?.id ?? null;
+  const isLoggedIn = Boolean(token && effectiveUserId);
 
-  // Load cart on component mount and when authentication changes
-  useEffect(() => {
-    if (isUserAuthenticated && userId) {
-      console.log('Authentication detected, loading cart for user:', userId);
-      loadCart();
-    } else {
-      console.log('User not authenticated, clearing cart state...');
-      // Clear cart state when not authenticated
-      setCartItems([]);
-      setTotalAmount(0);
-      setCartCount(0);
-    }
-  }, [isUserAuthenticated, userId]); // Use stable references
-
-  const loadCart = async () => {
-    // Don't try to load cart if not authenticated
-    if (!isAuthenticated()) {
+  const loadCart = useCallback(async () => {
+    if (!token || !effectiveUserId) {
       console.log('Cannot load cart - user not authenticated');
       setCartItems([]);
       setTotalAmount(0);
       setCartCount(0);
-      return;
-    }
-
-    // Prevent multiple simultaneous cart loads
-    if (loading) {
-      console.log('Cart already loading, skipping...');
       return;
     }
 
@@ -59,7 +37,6 @@ export const CartProvider = ({ children }) => {
       const cart = await cartService.getCart();
       console.log('Cart data received:', cart);
       
-      // Ensure cart items is always an array
       const items = Array.isArray(cart.cartItems) ? cart.cartItems : [];
       
       setCartItems(items);
@@ -69,8 +46,6 @@ export const CartProvider = ({ children }) => {
       console.log(`Cart loaded successfully: ${items.length} items, total: ${cart.totalAmount}`);
     } catch (error) {
       console.error('Failed to load cart:', error);
-      // Don't clear cart on error - keep existing state
-      // Only clear if it's an authentication error
       if (error.message && error.message.includes('auth')) {
         setCartItems([]);
         setTotalAmount(0);
@@ -79,7 +54,19 @@ export const CartProvider = ({ children }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token, effectiveUserId]);
+
+  useEffect(() => {
+    if (isLoggedIn) {
+      console.log('Authentication detected, loading cart for user:', effectiveUserId);
+      loadCart();
+    } else {
+      console.log('User not authenticated, clearing cart state...');
+      setCartItems([]);
+      setTotalAmount(0);
+      setCartCount(0);
+    }
+  }, [isLoggedIn, effectiveUserId, loadCart]);
 
   const addToCart = async (productId, productType, quantity = 1) => {
     if (!isAuthenticated()) {

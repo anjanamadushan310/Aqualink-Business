@@ -35,8 +35,16 @@ const FishSection = () => {
         //headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       const data = await response.json();
-      setFishList(data);
-      setFilteredFish(data);
+      
+      // Sort by average rating (highest to lowest)
+      const sortedData = data.sort((a, b) => {
+        const ratingA = a.averageRating || 0;
+        const ratingB = b.averageRating || 0;
+        return ratingB - ratingA;
+      });
+      
+      setFishList(sortedData);
+      setFilteredFish(sortedData);
       setLoading(false);
     } catch (error) {
       console.error('Error fetching fish data:', error);
@@ -63,7 +71,7 @@ const FishSection = () => {
       <section className="mb-20">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading fish collection...</p>
+          <p className="mt-4 text-gray-600">Loading fish...</p>
         </div>
       </section>
     );
@@ -71,11 +79,8 @@ const FishSection = () => {
 
   return (
     <section className="mb-20 px-2 sm:px-2 lg:px-2">
-      <div className=" mb-12">
-        <h3 className="text-3xl sm:text-4xl font-bold text-gray-900 mb-4">
-          Fish Collection
-        </h3>
-      </div>
+     
+        
 
       <SearchBar
         searchQuery={searchQuery}
@@ -97,25 +102,27 @@ const FishSection = () => {
             <button
               onClick={handlePrevPage}
               disabled={currentPage === 1}
-              className={`p-2 rounded-full border border-gray-300 ${
-                currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'
+              className={`px-3 py-2 sm:px-4 sm:py-2 rounded-md sm:rounded-full border border-gray-300 text-sm sm:text-base ${
+                currentPage === 1 ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'hover:bg-gray-200 bg-white'
               }`}
               aria-label="Previous"
             >
-              &#8592;
+              <span className="hidden sm:inline">&#8592;</span>
+              <span className="sm:hidden">← Prev</span>
             </button>
-            <span className="text-gray-700">
+            <span className="text-gray-700 text-sm sm:text-base font-medium">
               Page {currentPage} of {totalPages}
             </span>
             <button
               onClick={handleNextPage}
               disabled={currentPage === totalPages}
-              className={`p-2 rounded-full border border-gray-300 ${
-                currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-200'
+              className={`px-3 py-2 sm:px-4 sm:py-2 rounded-md sm:rounded-full border border-gray-300 text-sm sm:text-base ${
+                currentPage === totalPages ? 'opacity-50 cursor-not-allowed bg-gray-100' : 'hover:bg-gray-200 bg-white'
               }`}
               aria-label="Next"
             >
-              &#8594;
+              <span className="hidden sm:inline">&#8594;</span>
+              <span className="sm:hidden">Next →</span>
             </button>
           </div>
 

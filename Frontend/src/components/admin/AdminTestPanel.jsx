@@ -31,10 +31,22 @@ const AdminTestPanel = () => {
         setIsLoggedIn(true);
         setMessage('Login successful! You can now access admin features.');
       } else {
-        setMessage('Login failed: No token received');
+        setMessage('Login failed: Email or password is incorrect. Please try again.');
       }
     } catch (error) {
-      setMessage('Login failed: ' + (error.response?.data?.error || error.message));
+      const rawError = error.response?.data?.error || error.message || '';
+      const normalized = rawError.toLowerCase();
+      let friendly = 'Email or password is incorrect. Please try again.';
+
+      if (normalized.includes('pending admin approval')) {
+        friendly = 'Your account is awaiting admin approval. Please wait for verification to complete.';
+      } else if (normalized.includes('rejected')) {
+        friendly = 'Your account has been rejected. Please contact support for assistance.';
+      } else if (normalized.includes('deactivated')) {
+        friendly = 'Your account has been deactivated. Please contact support.';
+      }
+
+      setMessage('Login failed: ' + friendly);
     } finally {
       setLoading(false);
     }

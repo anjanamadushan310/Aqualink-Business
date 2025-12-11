@@ -338,9 +338,14 @@ const ChatWithSeller = ({ product, productType, onClose, existingChatRoom }) => 
         const result = await chatService.sendImageMessage(chatRoom.id, imageToSend);
         console.log('Image message sent successfully:', result);
         
-        // Add the returned message to local state (backend returns saved message)
+        // Avoid duplicates when WebSocket echo returns before/after HTTP response
         if (result) {
-          setMessages(prev => [...prev, result]);
+          setMessages(prev => {
+            if (result.id && prev.some(msg => msg.id === result.id)) {
+              return prev;
+            }
+            return [...prev, result];
+          });
         }
         
         // Clear image preview on success

@@ -1,10 +1,10 @@
 
 import React, { useEffect, useRef } from 'react';
 import { Fish, User, Settings, LogOut, Briefcase, Home, MessageCircle } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import ProfileMenu from './ProfileMenu';
-import { getDashboardPath } from '../../utils/roleUtils';
+import { getDashboardPath, ROLES, userHasAnyRole } from '../../utils/roleUtils';
 
 function Navbar({
   dashboardName,
@@ -12,8 +12,16 @@ function Navbar({
   setShowProfileMenu,
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, logout, setActiveRole } = useAuth();
   const profileMenuRef = useRef(null);
+  const chatAllowedRoles = [
+    ROLES.SHOP_OWNER,
+    ROLES.FARM_OWNER,
+    ROLES.INDUSTRIAL_STUFF_SELLER,
+    ROLES.SERVICE_PROVIDER
+  ];
+  const canSeeChatLink = userHasAnyRole(user, chatAllowedRoles);
 
   // Note: outside-click and escape handling for the profile menu is handled
   // inside the portal-based <ProfileMenu /> component so we don't add
@@ -38,6 +46,22 @@ function Navbar({
     setShowProfileMenu(false);
   };
 
+  const isActivePath = (path) => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
+  };
+
+  const navLinkClass = (path) => {
+    const active = isActivePath(path);
+    return `relative px-3 py-1 rounded-full text-sm font-semibold tracking-wide transition-all duration-200 ${
+      active
+        ? 'bg-white/20 text-white shadow-lg shadow-white/30 backdrop-blur'
+        : 'text-white/80 hover:text-white hover:bg-white/10'
+    }`;
+  };
+
   return (
     <nav className="bg-gradient-to-r from-blue-900 via-blue-800 to-cyan-700 text-white shadow-2xl sticky top-0 z-50 backdrop-blur-sm">
       <div className="mx-14">
@@ -58,16 +82,21 @@ function Navbar({
           <div className="flex items-center space-x-6">
             {!dashboardName && (
               <>
-                <Link to="/cart" className="text-white font-medium hover:underline">
-                  Shopping Cart
+                <Link to="/" className={navLinkClass('/')}>
+                  Home
                 </Link>
-                <Link to="/blog" className="text-white font-medium hover:underline">
+                {user?.roles?.includes('SHOP_OWNER') && (
+                  <Link to="/cart" className={navLinkClass('/cart')}>
+                    Shopping Cart
+                  </Link>
+                )}
+                <Link to="/blog" className={navLinkClass('/blog')}>
                   Blog
                 </Link>
-                <Link to="/about" className="text-white font-medium hover:underline">
+                <Link to="/about" className={navLinkClass('/about')}>
                   About
                 </Link>
-                <Link to="/contact" className="text-white font-medium hover:underline">
+                <Link to="/contact" className={navLinkClass('/contact')}>
                   Contact Us
                 </Link>
               </>
@@ -94,11 +123,11 @@ function Navbar({
               </>
             )}
 
-            {/* Chat Button - Show for all logged-in users */}
-            {user && (
+            {/* Chat Button - Only for selected roles */}
+            {canSeeChatLink && (
               <Link 
                 to="/chats" 
-                className="flex items-center space-x-2 text-white font-medium hover:bg-white hover:bg-opacity-10 px-3 py-2 rounded-lg transition-all duration-200"
+                className={`${navLinkClass('/chats')} flex items-center space-x-2`}
                 title="My Chats"
               >
                 <MessageCircle className="w-5 h-5" />
@@ -110,7 +139,7 @@ function Navbar({
             {dashboardName && (
               <Link 
                 to="/" 
-                className="flex items-center space-x-2 text-white font-medium hover:bg-white hover:bg-opacity-10 px-3 py-2 rounded-lg transition-all duration-200"
+                className={`${navLinkClass('/')} flex items-center space-x-2`}
                 title="Go to Home"
               >
                 <Home className="w-5 h-5" />

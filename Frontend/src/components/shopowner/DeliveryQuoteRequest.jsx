@@ -1,25 +1,38 @@
-import React, { useState, useContext, useEffect, useRef } from "react";
+import React, { useState, useContext, useEffect, useRef, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { CartContext } from "../../context/CartContext";
 import { useAuth } from "../../context/AuthContext";
 import axios from "axios";
-import { toast } from 'react-toastify';
 import { districtToTowns } from "../../components/user-profile/locationData.jsx";
 import deliveryService from "../../services/deliveryService";
+import cartService from "../../services/cartService";
 import { ENV } from "../../config/env.js";
+import { useNotification } from "../../context/NotificationContext";
+
+const filterPhysicalItems = (items = []) =>
+  items.filter(item => item.productType !== 'service');
+
+const calculateSubtotal = (items = []) =>
+  items.reduce((sum, item) => {
+    const itemPrice = Number(item.price) || 0;
+    const itemQuantity = Number(item.quantity) || 0;
+    return sum + (itemPrice * itemQuantity);
+  }, 0);
 
 const EnhancedDeliveryRequest = () => {
-  const { cartItems, totalAmount, clearCart, refreshCart } = useContext(CartContext);
+  const { cartItems, totalAmount, clearCart, refreshCart, removeFromCart } = useContext(CartContext);
   const { token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { sellerId, businessName } = location.state || {};
+  const { notifyError, notifySuccess } = useNotification();
   const [sending, setSending] = useState(false);
   const [error, setError] = useState(null);
   const [availableTowns, setAvailableTowns] = useState([]);
   const [addressLoaded, setAddressLoaded] = useState(false); // Track if address has been loaded from profile
   const initialLoadRef = useRef(false); // Track if initial load has happened
   const [paymentMethod, setPaymentMethod] = useState('CASH_ON_DELIVERY'); // Default to cash on delivery
+  const [selectedOrder, setSelectedOrder] = useState(null);
   const [deliveryAddress, setDeliveryAddress] = useState({
     place: '',
     street: '',
@@ -51,6 +64,10 @@ const EnhancedDeliveryRequest = () => {
       try {
         const orderData = JSON.parse(storedOrderData);
         console.log('Found stored order data from Cart:', orderData);
+
+        if (orderData?.status === 'REQUESTING_QUOTES' && orderData.items?.length) {
+          setSelectedOrder(orderData);
+        }
         
         // If cart context is empty but we have stored data, use the stored data
         if ((!cartItems || cartItems.length === 0) && orderData.items && orderData.items.length > 0) {
@@ -140,7 +157,7 @@ const EnhancedDeliveryRequest = () => {
           console.error('Response data:', error.response.data);
           console.error('Response status:', error.response.status);
         }
-        toast.error('Failed to load your address information. Please enter it manually.');
+        notifyError('Failed to load your address information. Please enter it manually.');
         setAddressLoaded(true); // Mark as loaded even on error to prevent retries
       }
     };
@@ -226,48 +243,91 @@ const EnhancedDeliveryRequest = () => {
     quotesExpireOn: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
   });
 
+  const effectiveOrder = useMemo(() => {
+    if (selectedOrder?.items?.length) {
+      const physicalItems = filterPhysicalItems(selectedOrder.items);
+      return {
+        ...selectedOrder,
+        items: physicalItems,
+        subtotal: selectedOrder.subtotal ?? calculateSubtotal(physicalItems)
+      };
+    }
+
+    if (sellerId && cartItems?.length) {
+      // Convert sellerId to string for comparison to handle both number/string types
+      const targetSellerId = String(sellerId);
+      
+      const sellerItems = filterPhysicalItems(cartItems.filter(item => {
+        // Handle missing sellerId on item safely
+        const itemSellerId = item.sellerId ? String(item.sellerId) : '';
+        return itemSellerId === targetSellerId;
+      }));
+
+      if (sellerItems.length > 0) {
+        return {
+          sellerId,
+          businessName,
+          sellerName: sellerItems[0]?.sellerName || null,
+          items: sellerItems,
+          subtotal: calculateSubtotal(sellerItems)
+        };
+      }
+    }
+
+    // Only fallback to all items if NO specific seller was requested
+    if (!sellerId) {
+      const fallbackItems = filterPhysicalItems(cartItems || []);
+      return {
+        sellerId: null,
+        businessName: null,
+        sellerName: fallbackItems[0]?.sellerName || null,
+        items: fallbackItems,
+        subtotal: calculateSubtotal(fallbackItems) || totalAmount || 0
+      };
+    }
+
+    // If sellerId was requested but no items found, return empty
+    return {
+      sellerId,
+      businessName,
+      sellerName: null,
+      items: [],
+      subtotal: 0
+    };
+  }, [selectedOrder, cartItems, sellerId, businessName, totalAmount]);
+
   const handleSubmitQuoteRequest = async () => {
+    if (!effectiveOrder.items?.length) {
+      notifyError('No physical items selected for delivery.');
+      return;
+    }
+
+    const requestSellerId = effectiveOrder.sellerId || sellerId;
+    if (!requestSellerId) {
+      notifyError('Missing seller information for this delivery request.');
+      return;
+    }
+
+    const requestBusinessName = effectiveOrder.businessName || businessName || effectiveOrder.sellerName || 'Unknown Seller';
+
     setSending(true);
     setError(null);
 
     try {
-      // Use the same logic as display to get correct items and total
-      let itemsToUse = cartItems;
-      let totalToUse = totalAmount;
+      const itemsToUse = effectiveOrder.items;
+      const subtotalToUse = effectiveOrder.subtotal || 0;
 
-      // If cart context is empty, try to use stored order data
-      if (!cartItems || cartItems.length === 0) {
-        const storedOrderData = localStorage.getItem('aqualink_order_data');
-        if (storedOrderData) {
-          try {
-            const orderData = JSON.parse(storedOrderData);
-            itemsToUse = orderData.items;
-            totalToUse = orderData.subtotal;
-          } catch (error) {
-            console.error('Error parsing stored order data for submission:', error);
-          }
-        }
-      }
-
-      // Calculate actual total from items for accuracy
-      const calculatedTotal = itemsToUse && itemsToUse.length > 0 
-        ? itemsToUse.reduce((sum, item) => {
-            const itemPrice = parseFloat(item.price) || 0;
-            const itemQuantity = parseInt(item.quantity) || 0;
-            return sum + (itemPrice * itemQuantity);
-          }, 0)
-        : 0;
-
-      // Use calculated total if it's greater than 0, otherwise use totalToUse
-      const finalTotal = calculatedTotal > 0 ? calculatedTotal : (totalToUse || 0);
+      const calculatedTotal = calculateSubtotal(itemsToUse);
+      const finalTotal = calculatedTotal > 0 ? calculatedTotal : subtotalToUse;
 
       const requestData = {
-        sessionId: crypto.randomUUID(),
-        sellerId: sellerId,
-        businessName: businessName,
+        sessionId: selectedOrder?.sessionId || crypto.randomUUID(),
+        sellerId: requestSellerId,
+        businessName: requestBusinessName,
         paymentMethod: paymentMethod, // Add payment method
         items: itemsToUse.map(item => ({
           cartItemId: item.cartItemId,
+          productId: item.productId,
           productName: item.productName,
           productType: item.productType,
           quantity: item.quantity,
@@ -293,19 +353,19 @@ const EnhancedDeliveryRequest = () => {
 
       // Validate delivery address
       if (!deliveryAddress.place.trim()) {
-        toast.error('Please enter the place/building name');
+        notifyError('Please enter the place/building name');
         return;
       }
       if (!deliveryAddress.street.trim()) {
-        toast.error('Please enter the street address');
+        notifyError('Please enter the street address');
         return;
       }
       if (!deliveryAddress.district) {
-        toast.error('Please select a district');
+        notifyError('Please select a district');
         return;
       }
       if (!deliveryAddress.town) {
-        toast.error('Please select a town');
+        notifyError('Please select a town');
         return;
       }
 
@@ -326,15 +386,72 @@ const EnhancedDeliveryRequest = () => {
       console.log('================================');
 
       if (response.success && response.data) {
-        toast.success('Delivery quote request sent successfully! Delivery persons will be notified.');
-        clearCart(); // Clear the cart after successful request
+        notifySuccess('Delivery quote request sent successfully! Delivery persons will be notified.');
+        
+        // Remove only the ordered items from the cart (if they still exist)
+        if (requestData.items && requestData.items.length > 0) {
+          const shouldCleanCart = (cartItems || []).some(ci =>
+            requestData.items.some(item => {
+              const sameId = item.cartItemId && ci.cartItemId === item.cartItemId;
+              const sameProduct = item.productId &&
+                String(ci.productId) === String(item.productId) &&
+                ci.productType === item.productType;
+              return sameId || sameProduct;
+            })
+          );
+
+          if (!shouldCleanCart) {
+            console.log('Cart already cleaned up for this delivery request. Skipping removal.');
+          } else {
+            console.log('Starting cart cleanup. Items to remove:', requestData.items.length);
+            
+            try {
+              // Fetch fresh cart data to ensure we have valid IDs
+              const currentCart = await cartService.getCart();
+              const currentItems = currentCart.cartItems || [];
+              console.log('Fetched fresh cart items for cleanup:', currentItems.length);
+
+              for (const item of requestData.items) {
+                let idToRemove = item.cartItemId;
+                
+                if (currentItems.length > 0) {
+                  const found = currentItems.find(ci =>
+                    (item.productId && String(ci.productId) === String(item.productId) && ci.productType === item.productType) ||
+                    (item.cartItemId && ci.cartItemId === item.cartItemId)
+                  );
+                  if (found) {
+                    console.log(`Resolved cartItemId ${found.cartItemId} for product ${item.productName} (previous ID: ${idToRemove})`);
+                    idToRemove = found.cartItemId;
+                  }
+                }
+
+                if (idToRemove) {
+                  try {
+                    console.log(`Removing cart item: ${idToRemove}`);
+                    await removeFromCart(idToRemove);
+                    console.log(`Successfully removed cart item: ${idToRemove}`);
+                  } catch (err) {
+                    console.warn(`Failed to remove item ${idToRemove} from cart:`, err);
+                  }
+                } else {
+                  console.warn('Could not resolve cartItemId for item:', item);
+                }
+              }
+            } catch (error) {
+              console.error('Error during cart cleanup:', error);
+              // Don't block success flow
+            }
+          }
+        }
+        // Refresh cart to ensure UI is in sync
+        if (refreshCart) refreshCart();
         
         // Prepare order data for quote acceptance page
         const orderData = {
           sessionId: response.data.sessionId || requestData.sessionId,
           orderId: response.data.orderId,
-          sellerId: sellerId,
-          businessName: businessName,
+          sellerId: requestSellerId,
+          businessName: requestBusinessName,
           paymentMethod: paymentMethod, // Include payment method
           items: requestData.items,
           subtotal: requestData.subtotal,
@@ -368,7 +485,7 @@ const EnhancedDeliveryRequest = () => {
       console.error('Error submitting quote request:', error);
       const errorMessage = error.message || error.response?.data?.message || 'Failed to submit quote request';
       setError(errorMessage);
-      toast.error(errorMessage);
+      notifyError(errorMessage);
     } finally {
       setSending(false);
     }
@@ -406,29 +523,9 @@ const EnhancedDeliveryRequest = () => {
       {/* Order Summary */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-6">
         <h3 className="text-xl font-semibold mb-4">Order Summary</h3>
-        {(() => {
-          // Determine which items and total to display
-          let itemsToShow = cartItems;
-          let totalToShow = totalAmount;
-
-          // If cart context is empty, try to use stored order data
-          if (!cartItems || cartItems.length === 0) {
-            const storedOrderData = localStorage.getItem('aqualink_order_data');
-            if (storedOrderData) {
-              try {
-                const orderData = JSON.parse(storedOrderData);
-                itemsToShow = orderData.items;
-                totalToShow = orderData.subtotal;
-                console.log('Displaying stored order data in summary:', { itemsToShow, totalToShow });
-              } catch (error) {
-                console.error('Error parsing stored order data for display:', error);
-              }
-            }
-          }
-
-          return itemsToShow && itemsToShow.length > 0 ? (
+        {effectiveOrder.items && effectiveOrder.items.length > 0 ? (
             <div className="space-y-4">
-              {itemsToShow.map((item, index) => {
+              {effectiveOrder.items.map((item, index) => {
                 console.log(`Item ${index}:`, item); // Debug each item
                 const itemTotal = (item.price && item.quantity) ? (item.price * item.quantity) : 0;
                 return (
@@ -449,27 +546,17 @@ const EnhancedDeliveryRequest = () => {
               <div className="flex justify-between items-center pt-2">
                 <p className="font-semibold">Total:</p>
                 <p className="font-semibold">Rs.{(() => {
-                  // Always calculate total from actual items to ensure accuracy
-                  const calculatedTotal = itemsToShow.reduce((sum, item) => {
-                    const itemPrice = parseFloat(item.price) || 0;
-                    const itemQuantity = parseInt(item.quantity) || 0;
-                    return sum + (itemPrice * itemQuantity);
-                  }, 0);
-                  
-                  // Use calculated total if it's greater than 0, otherwise use totalToShow
-                  return calculatedTotal > 0 ? calculatedTotal.toFixed(2) : (totalToShow ? totalToShow.toFixed(2) : '0.00');
+                  const calculatedTotal = calculateSubtotal(effectiveOrder.items);
+                  return calculatedTotal > 0 ? calculatedTotal.toFixed(2) : (effectiveOrder.subtotal ? effectiveOrder.subtotal.toFixed(2) : '0.00');
                 })()}</p>
               </div>
             </div>
           ) : (
             <div className="text-center py-8 text-gray-500">
               <p>No items found</p>
-              <p className="text-sm">Cart Items: {JSON.stringify(cartItems)}</p>
-              <p className="text-sm">Total Amount: {totalAmount}</p>
-              <p className="text-sm">Stored Data: {localStorage.getItem('aqualink_order_data') ? 'Found' : 'Not found'}</p>
+              <p className="text-sm">Please return to your cart and start the delivery flow from the seller you want to ship from.</p>
             </div>
-          );
-        })()}
+        )}
       </div>
 
       {/* Delivery Address */}
@@ -630,7 +717,7 @@ const EnhancedDeliveryRequest = () => {
       <div className="flex justify-end">
         <button
           onClick={handleSubmitQuoteRequest}
-          disabled={sending}
+          disabled={sending || !effectiveOrder.items?.length}
           className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
         >
           {sending ? (

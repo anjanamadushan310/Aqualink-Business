@@ -62,4 +62,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
            "  SELECT 1 FROM IndustrialStuff i WHERE i.id = oi.productId AND i.nicNumber = :sellerNic" +
            ")) AND o.orderStatus IN :statuses")
     List<Order> findOrdersBySellerNicAndOrderStatuses(@Param("sellerNic") String sellerNic, @Param("statuses") List<Order.OrderStatus> statuses);
+    
+    // Count orders by user email
+    @Query("SELECT COUNT(o) FROM Order o JOIN o.buyerUser u WHERE u.email = :email")
+    long countByUserEmail(@Param("email") String email);
 }

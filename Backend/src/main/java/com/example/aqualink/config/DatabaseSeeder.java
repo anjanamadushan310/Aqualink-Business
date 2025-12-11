@@ -232,8 +232,7 @@ public class DatabaseSeeder {
                         200, 650.00, 2);
             createFishAd(sunil, "Giant Gourami", "Large Giant Gourami, suitable for big ponds and aquaculture.", 
                         100, 1200.00, 2);
-            createFishAd(sunil, "Fingerlings - Tilapia", "Tilapia fingerlings for pond stocking. Healthy and fast-growing.", 
-                        5000, 15.00, 100);
+            // Removed Fingerlings - Tilapia seed
             createFishAd(sunil, "Freshwater Prawns", "Giant freshwater prawns, excellent for aquaculture.", 
                         250, 850.00, 5);
         }
@@ -429,77 +428,7 @@ public class DatabaseSeeder {
     public void seedBlogPosts() {
         log.info("Seeding blog posts...");
         
-        User pradeep = userRepository.findByEmail("pradeep@export.com").orElse(null);
         User chandana = userRepository.findByEmail("chandana@export.com").orElse(null);
-        
-        if (pradeep != null) {
-            createBlogPost(pradeep, "Best Practices for Fish Farming in Sri Lanka",
-                "<h2>Introduction to Modern Fish Farming</h2>" +
-                "<p>Fish farming in Sri Lanka has evolved significantly over the past decade, transforming from traditional methods to modern aquaculture practices. This comprehensive guide explores the best practices that have helped local fish farmers achieve sustainable success while maintaining environmental responsibility.</p>" +
-                "<h3>Understanding the Sri Lankan Aquaculture Landscape</h3>" +
-                "<p>Sri Lanka's tropical climate and abundant water resources create ideal conditions for fish farming. However, success requires more than just favorable conditions. Farmers must understand water quality management, disease prevention, and sustainable feeding practices to maximize their yields while protecting the environment.</p>" +
-                "<h3>Water Quality Management</h3>" +
-                "<p>Maintaining optimal water quality is the foundation of successful fish farming. Regular monitoring of pH levels (ideally 6.5-8.5), dissolved oxygen (minimum 5mg/L), and ammonia levels is essential. Install aeration systems in ponds to ensure adequate oxygen supply, especially during hot weather. Weekly water testing helps identify problems before they affect fish health.</p>" +
-                "<h3>Disease Prevention Strategies</h3>" +
-                "<p>Prevention is always better than cure in aquaculture. Implement biosecurity measures including quarantine periods for new stock, regular health inspections, and proper waste management. Avoid overstocking, which creates stress and increases disease susceptibility. When purchasing fingerlings, choose reputable hatcheries with certified disease-free stock.</p>" +
-                "<h3>Sustainable Feeding Practices</h3>" +
-                "<p>Feed represents 60-70% of operational costs in fish farming. Use high-quality commercial feeds appropriate for your fish species and growth stage. Feed 2-3 times daily, providing only what fish can consume in 15-20 minutes. Consider supplementing commercial feeds with locally available ingredients to reduce costs while maintaining nutrition.</p>" +
-                "<h3>Pond Management and Maintenance</h3>" +
-                "<p>Regular pond maintenance prevents many common problems. Remove excess algae and aquatic plants that compete for oxygen. Check and maintain pond embankments to prevent leaks. Clean filters and aerators weekly. Between harvests, dry ponds completely and apply lime to eliminate parasites and improve soil quality.</p>" +
-                "<h3>Record Keeping and Business Management</h3>" +
-                "<p>Successful farmers maintain detailed records of stocking dates, feeding schedules, water quality parameters, and harvest data. This information helps identify trends, optimize feeding strategies, and make informed business decisions. Track expenses and income carefully to understand profitability and identify areas for improvement.</p>" +
-                "<h3>Marketing and Value Addition</h3>" +
-                "<p>Don't just focus on production - develop strong marketing strategies. Build relationships with local markets, restaurants, and exporters. Consider value-added products like smoked or filleted fish to increase profit margins. Join farmer cooperatives to access better prices and shared resources.</p>" +
-                "<h3>Conclusion</h3>" +
-                "<p>Modern fish farming in Sri Lanka offers excellent opportunities for those willing to adopt scientific practices and maintain consistent management. By following these best practices, farmers can achieve sustainable production, ensure fish health, and build profitable businesses that contribute to food security and economic development.</p>",
-                LocalDateTime.now().minusDays(10), 245);
-            
-            createBlogPost(pradeep, "Export Quality Standards for Seafood",
-                "<h2>Understanding International Seafood Standards</h2>" +
-                "<p>Exporting seafood from Sri Lanka requires strict adherence to international quality and safety standards. This comprehensive guide covers everything you need to know about meeting export requirements and maintaining product quality throughout the supply chain.</p>" +
-                "<h3>Key International Certification Requirements</h3>" +
-                "<p>The primary certifications for seafood exports include HACCP (Hazard Analysis Critical Control Points), ISO 22000 for food safety management, and country-specific certifications like EU approval numbers or USDA compliance. These certifications demonstrate your commitment to food safety and open doors to premium international markets.</p>" +
-                "<h3>Temperature Control and Cold Chain Management</h3>" +
-                "<p>Maintaining the cold chain is critical for seafood quality. Fresh fish must be chilled to 0-4°C immediately after harvest. Frozen products require storage at -18°C or below. Use calibrated thermometers at every stage and maintain detailed temperature logs. Any break in the cold chain can compromise product safety and result in rejected shipments.</p>" +
-                "<h3>Hygiene and Sanitation Protocols</h3>" +
-                "<p>Processing facilities must meet stringent hygiene standards. Implement regular cleaning schedules using approved sanitizers. Workers must wear appropriate protective clothing, including hairnets, gloves, and clean uniforms. Establish handwashing protocols and restrict access to processing areas. Regular facility audits help identify and address hygiene issues before they affect exports.</p>" +
-                "<h3>Traceability Systems</h3>" +
-                "<p>Modern seafood exports require complete traceability from farm to consumer. Implement systems that track harvest dates, processing batches, storage conditions, and distribution channels. Use unique lot numbers and maintain comprehensive records. Traceability not only meets legal requirements but also protects your brand reputation and enables quick recall if needed.</p>" +
-                "<h3>Chemical and Microbiological Testing</h3>" +
-                "<p>Regular laboratory testing is non-negotiable for exports. Test for harmful bacteria like Salmonella, E. coli, and Vibrio species. Monitor antibiotic residues, heavy metals, and histamine levels. Partner with accredited laboratories and maintain testing schedules that meet or exceed importing country requirements.</p>" +
-                "<h3>Packaging and Labeling Requirements</h3>" +
-                "<p>Export packaging must protect product quality while meeting regulatory requirements. Use food-grade materials appropriate for your product. Labels must include species name (both common and scientific), net weight, production date, expiry date, storage instructions, and country of origin. Ensure labels are in the language required by the destination country.</p>" +
-                "<h3>Documentation and Compliance</h3>" +
-                "<p>Export documentation includes health certificates, catch certificates (for wild-caught seafood), commercial invoices, and bills of lading. Work with experienced freight forwarders who understand seafood logistics. Keep copies of all documentation for at least two years to facilitate audits and resolve any issues.</p>" +
-                "<h3>Staying Updated with Changing Regulations</h3>" +
-                "<p>International seafood regulations evolve constantly. Subscribe to updates from regulatory bodies like the FDA, EU Commission, and relevant industry associations. Attend export training programs and trade shows. Building relationships with importers helps you stay informed about market requirements and emerging trends.</p>",
-                LocalDateTime.now().minusDays(8), 189);
-            
-            createBlogPost(pradeep, "Sustainable Fishing Practices for the Future",
-                "<h2>The Importance of Sustainability in Modern Aquaculture</h2>" +
-                "<p>As the global demand for seafood continues to rise, sustainable fishing and farming practices have never been more important. This article explores how Sri Lankan aquaculture can balance production needs with environmental conservation to ensure long-term viability of the industry.</p>" +
-                "<h3>Understanding Environmental Impact</h3>" +
-                "<p>Traditional intensive fish farming can impact water quality, deplete wild fish stocks used for feed, and affect local ecosystems. However, sustainable practices can minimize these effects while maintaining profitability. Understanding your operation's environmental footprint is the first step toward implementing meaningful improvements.</p>" +
-                "<h3>Integrated Multi-Trophic Aquaculture (IMTA)</h3>" +
-                "<p>IMTA systems combine different species that complement each other ecologically. For example, fish waste provides nutrients for seaweed or vegetables grown in the same water system, which then filter the water for the fish. This creates a balanced ecosystem that reduces waste, improves water quality, and provides multiple income streams.</p>" +
-                "<h3>Sustainable Feed Alternatives</h3>" +
-                "<p>Traditional fish feeds rely heavily on wild-caught fish meal, creating sustainability concerns. Modern alternatives include plant-based proteins, insect meal, and algae-based feeds. Sri Lankan farmers can explore locally available ingredients like rice bran, coconut meal, and vegetable proteins to create sustainable, cost-effective feed formulations.</p>" +
-                "<h3>Water Conservation and Recycling</h3>" +
-                "<p>Recirculating Aquaculture Systems (RAS) can reduce water usage by up to 99% compared to traditional methods. While initial investment is higher, RAS allows greater production density and better disease control. Even simple improvements like pond water recycling for irrigation can significantly reduce freshwater consumption.</p>" +
-                "<h3>Energy Efficiency Measures</h3>" +
-                "<p>Aquaculture requires significant energy for aeration, pumping, and temperature control. Invest in energy-efficient equipment like solar-powered aerators and optimized pump systems. Consider renewable energy sources such as solar panels to reduce both operational costs and carbon footprint.</p>" +
-                "<h3>Biodiversity Conservation</h3>" +
-                "<p>Prevent farmed fish from escaping into natural water bodies where they could compete with or breed with wild populations. Use native or locally adapted species when possible. Maintain buffer zones around farms to protect natural habitats and water quality. Support conservation efforts for threatened wild fish populations.</p>" +
-                "<h3>Community Engagement and Fair Trade</h3>" +
-                "<p>Sustainable aquaculture extends beyond environmental concerns to include social responsibility. Provide fair wages and safe working conditions. Engage with local communities to address concerns and share benefits. Support local economies by sourcing materials and services locally when possible.</p>" +
-                "<h3>Certification and Market Access</h3>" +
-                "<p>Sustainable certifications like ASC (Aquaculture Stewardship Council) or BAP (Best Aquaculture Practices) open doors to premium markets and conscious consumers willing to pay higher prices for sustainably produced seafood. These certifications also provide frameworks for continuous improvement in environmental and social performance.</p>" +
-                "<h3>The Business Case for Sustainability</h3>" +
-                "<p>While some sustainable practices require upfront investment, they often reduce long-term costs through improved efficiency, better fish health, and access to premium markets. Sustainable operations are also more resilient to regulatory changes and market shifts toward environmentally conscious products.</p>" +
-                "<h3>Looking Forward</h3>" +
-                "<p>The future of aquaculture lies in balancing production with conservation. By adopting sustainable practices today, Sri Lankan fish farmers can ensure their operations remain viable for generations while contributing to global food security and environmental protection. Start small, measure progress, and continuously improve - every step toward sustainability counts.</p>",
-                LocalDateTime.now().minusDays(3), 156);
-        }
         
         if (chandana != null) {
             createBlogPost(chandana, "Setting Up Your First Aquarium: A Beginner's Guide",
@@ -527,7 +456,7 @@ public class DatabaseSeeder {
                 "<p>Cloudy water usually indicates bacterial bloom during cycling or overfeeding. Green water suggests excess light or nutrients - reduce lighting and feeding. Brown algae is common in new tanks and usually resolves naturally. If fish gasp at the surface, check oxygen levels and water parameters immediately.</p>" +
                 "<h3>Growing as an Aquarist</h3>" +
                 "<p>Join local aquarium clubs and online communities to learn from experienced hobbyists. Start a quarantine tank for new fish to prevent disease introduction. As you gain experience, you might explore planted tanks, breeding programs, or specialized setups for specific species. The aquarium hobby offers endless opportunities for learning and enjoyment.</p>",
-                LocalDateTime.now().minusDays(5), 312);
+                LocalDateTime.now().minusDays(5), 312, "/uploads/blog/post1.png");
             
             createBlogPost(chandana, "Common Fish Diseases and How to Prevent Them",
                 "<h2>Fish Health Management: Prevention is Better Than Cure</h2>" +
@@ -556,13 +485,28 @@ public class DatabaseSeeder {
                 "<p>Chronic stress is a major disease contributor. Provide adequate hiding spots and appropriate tank mates. Avoid aggressive species with peaceful fish. Maintain consistent lighting schedule (8-10 hours daily). Minimize noise and vibration near the tank. Perform maintenance consistently and avoid sudden changes. Stressed fish show clamped fins, faded colors, and hiding behavior.</p>" +
                 "<h3>When to Seek Professional Help</h3>" +
                 "<p>Consult aquatic veterinarians or experienced aquarists for unusual symptoms, rapid fish deaths, or treatment-resistant diseases. Document symptoms with photos, water parameters, and timeline. Some diseases require prescription medications or laboratory diagnosis. Join aquarium forums or local clubs for advice, but verify information from multiple reliable sources before acting.</p>",
-                LocalDateTime.now().minusDays(2), 98);
+                LocalDateTime.now().minusDays(2), 98, "/uploads/blog/post2.png");
+            
+            createBlogPost(chandana, "විසිතුරු මසුන් ඇති කිරීම: ආරම්භකයින් සඳහා උපදෙස්",
+                "<h2>විසිතුරු මසුන් ඇති කිරීමේ කලාව</h2>" +
+                "<p>විසිතුරු මසුන් ඇති කිරීම ඉතා විනෝදජනක මෙන්ම මනසට සුවයක් ගෙන දෙන විනෝදාංශයකි. ඔබ අලුතින් මෙම විනෝදාංශයට යොමු වන්නේ නම්, පහත කරුණු ගැන අවධානය යොමු කිරීම වැදගත් වේ.</p>" +
+                "<h3>නිවැරදි ටැංකියක් තෝරා ගැනීම</h3>" +
+                "<p>ඔබ තෝරා ගන්නා මසුන් වර්ගය අනුව ටැංකියේ ප්‍රමාණය තීරණය කළ යුතුය. කුඩා ටැංකියකින් පටන් ගන්නවාට වඩා මධ්‍යම ප්‍රමාණයේ ටැංකියකින් (අඩි 2-3) ආරම්භ කිරීම වඩාත් සුදුසුය. මන්දයත් ජලයේ ගුණාත්මකභාවය පවත්වා ගැනීම පහසු බැවිනි.</p>" +
+                "<h3>ජලයේ ගුණාත්මකභාවය</h3>" +
+                "<p>මසුන්ගේ සෞඛ්‍යය සඳහා පිරිසිදු ජලය අත්‍යවශ්‍ය වේ. ක්ලෝරීන් ඉවත් කළ ජලය භාවිතා කරන්න. සතියකට වරක්වත් ටැංකියේ ජලයෙන් 20% ක් පමණ ඉවත් කර අලුත් ජලය එකතු කිරීම සුදුසුය. ෆිල්ටරයක් (Filter) භාවිතා කිරීම මගින් ජලය පිරිසිදුව තබා ගත හැක.</p>" +
+                "<h3>මසුන් තෝරා ගැනීම</h3>" +
+                "<p>ආරම්භකයින් සඳහා ගප්පි (Guppy), ප්ලැටි (Platy), හෝ ගෝල්ඩ් ෆිෂ් (Goldfish) වැනි ඔරොත්තු දෙන මසුන් වර්ග තෝරා ගැනීම වඩාත් සුදුසුය. එකිනෙකාට හිරිහැර නොකරන මසුන් වර්ග එකට දැමීමට වග බලා ගන්න.</p>" +
+                "<h3>ආහාර ලබා දීම</h3>" +
+                "<p>මසුන්ට දිනකට දෙවරක් පමණක් ආහාර ලබා දෙන්න. විනාඩි 2-3 ක් ඇතුළත කා අවසන් කළ හැකි ප්‍රමාණයක් පමණක් ලබා දීම ප්‍රමාණවත්ය. වැඩිපුර ආහාර දැමීමෙන් ජලය ඉක්මනින් අපවිත්‍ර විය හැක.</p>" +
+                "<h3>නිගමනය</h3>" +
+                "<p>නිසි පරිදි නඩත්තු කරන්නේ නම්, මින් මැදුරක් ඔබේ නිවසට අලංකාරයක් මෙන්ම සන්සුන් බවක් එක් කරයි. ඉවසීම සහ නිවැරදි අවබෝධය තුළින් ඔබට සාර්ථකව විසිතුරු මසුන් ඇති කළ හැක.</p>",
+                LocalDateTime.now().minusDays(1), 150, "/uploads/blog/post3.png");
         }
         
         log.info("✅ Created blog posts");
     }
 
-    private void createBlogPost(User author, String title, String content, LocalDateTime createdAt, int views) {
+    private void createBlogPost(User author, String title, String content, LocalDateTime createdAt, int views, String imagePath) {
         if (blogPostRepository.existsByTitleAndAuthor(title, author)) {
             return;
         }
@@ -576,8 +520,8 @@ public class DatabaseSeeder {
         post.setUpdatedAt(createdAt);
         post.setPublishedAt(createdAt);
         
-        // Set featured image path - you can replace with actual renamed image
-        post.setFeaturedImagePath("/uploads/blog/" + title.toLowerCase().replace(" ", "_").substring(0, 30) + ".jpg");
+        // Set featured image path
+        post.setFeaturedImagePath(imagePath);
         
         blogPostRepository.save(post);
     }

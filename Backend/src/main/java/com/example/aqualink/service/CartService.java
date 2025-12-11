@@ -6,7 +6,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 @Transactional
@@ -185,6 +187,32 @@ public class CartService {
         cart.getCartItems().clear();
         cart.setTotalAmount(0.0);
         cartRepository.save(cart);
+    }
+
+    public void removeItemsBySeller(String email, Long sellerId) {
+        if (sellerId == null) {
+            throw new RuntimeException("Seller ID is required");
+        }
+
+        Cart cart = getCartByUserEmail(email);
+        if (cart.getCartItems() == null || cart.getCartItems().isEmpty()) {
+            throw new RuntimeException("Cart is empty");
+        }
+
+        List<CartItem> itemsToRemove = cart.getCartItems().stream()
+                .filter(item -> item.getSellerId() != null && item.getSellerId().equals(sellerId))
+                .collect(Collectors.toList());
+
+        if (itemsToRemove.isEmpty()) {
+            throw new RuntimeException("No items found for this seller in cart");
+        }
+
+        for (CartItem item : itemsToRemove) {
+            cartItemRepository.delete(item);
+        }
+
+        cart.getCartItems().removeAll(itemsToRemove);
+        updateCartTotal(cart);
     }
 
     public int getCartItemCount(String email) {
