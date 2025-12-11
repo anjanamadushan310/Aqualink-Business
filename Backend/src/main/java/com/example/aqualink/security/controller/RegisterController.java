@@ -59,6 +59,7 @@ public class RegisterController {
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
+            e.printStackTrace();
             response.put("message", "Failed to send OTP");
             response.put("error", e.getMessage());
             return ResponseEntity.status(500).body(response);
@@ -163,10 +164,7 @@ public class RegisterController {
     @PostMapping("/add-role")
     public ResponseEntity<Map<String, String>> addRoleToUser(
             HttpServletRequest request,
-            @RequestParam("role") String roleString,
-            @RequestParam(value = "nicFrontDocument", required = false) MultipartFile nicFrontDocument,
-            @RequestParam(value = "nicBackDocument", required = false) MultipartFile nicBackDocument,
-            @RequestParam(value = "selfieDocument", required = false) MultipartFile selfieDocument) {
+            @RequestBody Map<String, String> requestBody) {
 
         Map<String, String> response = new HashMap<>();
 
@@ -180,27 +178,23 @@ public class RegisterController {
             }
 
             // Validate role
+            String roleString = requestBody.get("role");
             if (roleString == null || roleString.trim().isEmpty()) {
                 response.put("message", "Failed to add role");
                 response.put("error", "Role is required");
                 return ResponseEntity.badRequest().body(response);
             }
 
-            // Validate documents
-            if ((nicFrontDocument == null || nicFrontDocument.isEmpty()) ||
-                (nicBackDocument == null || nicBackDocument.isEmpty()) ||
-                (selfieDocument == null || selfieDocument.isEmpty())) {
-                response.put("message", "Failed to add role");
-                response.put("error", "All documents (NIC Front, NIC Back, and Selfie) are required");
-                return ResponseEntity.badRequest().body(response);
-            }
+            // Add role to user (no documents needed for additional roles)
+            String result = authService.addRoleToUser(userId, roleString);
 
-            // Add role to user
-            String result = authService.addRoleToUser(userId, roleString, 
-                nicFrontDocument, nicBackDocument, selfieDocument);
-
-            if (result.equals("Role request submitted successfully")) {
+            if (result.equals("Role added successfully")) {
+                // Generate new JWT token with updated roles
+                Map<String, Object> tokenResponse = authService.generateTokenForUser(userId);
+                
                 response.put("message", result);
+                response.put("token", (String) tokenResponse.get("token"));
+                response.put("roles", tokenResponse.get("roles").toString());
                 return ResponseEntity.ok(response);
             } else {
                 response.put("message", "Failed to add role");

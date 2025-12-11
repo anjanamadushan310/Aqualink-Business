@@ -64,6 +64,17 @@ public class CartController {
         }
     }
 
+    @DeleteMapping("/remove/seller/{sellerId}")
+    public ResponseEntity<String> removeSellerItems(@PathVariable Long sellerId, Authentication authentication) {
+        try {
+            String email = authentication.getName();
+            cartService.removeItemsBySeller(email, sellerId);
+            return ResponseEntity.ok("Seller items removed from cart successfully");
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body("Failed to remove seller items from cart: " + e.getMessage());
+        }
+    }
+
     @DeleteMapping("/clear")
     public ResponseEntity<String> clearCart(Authentication authentication) {
         try {

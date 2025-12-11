@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react'
 import { Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
 import DashboardFooter from '../../components/common/DashboardFooter';
 import { PencilSquareIcon, NewspaperIcon } from '@heroicons/react/24/outline';
-import BlogManagement from '../../components/blog/BlogManagement';
-import BlogPostForm from '../../components/blog/BlogPostForm';
+import BlogManagement from '../../components/exporter/blog/BlogManagement';
+import BlogPostForm from '../../components/exporter/blog/BlogPostForm';
 import RoleBasedRoute from '../../components/common/RoleBasedRoute';
 import { ROLES } from '../../utils/roleUtils';
 

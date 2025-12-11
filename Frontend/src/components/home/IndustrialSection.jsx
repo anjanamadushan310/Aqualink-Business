@@ -54,8 +54,15 @@ const IndustrialSection = () => {
       const data = await response.json();
       console.log('Industrial data:', data);
       
-      setIndustrialList(data);
-      setFilteredIndustrial(data);
+      // Sort by average rating (highest to lowest)
+      const sortedData = data.sort((a, b) => {
+        const ratingA = a.averageRating || 0;
+        const ratingB = b.averageRating || 0;
+        return ratingB - ratingA;
+      });
+      
+      setIndustrialList(sortedData);
+      setFilteredIndustrial(sortedData);
     } catch (error) {
       console.error('Error fetching industrial data:', error);
       setError('Failed to load industrial supplies. Please try again later.');
@@ -83,6 +90,13 @@ const IndustrialSection = () => {
         industrial.category === selectedCategory
       );
     }
+
+    // Sort by average rating (highest to lowest)
+    filtered.sort((a, b) => {
+      const ratingA = a.averageRating || 0;
+      const ratingB = b.averageRating || 0;
+      return ratingB - ratingA;
+    });
 
     setFilteredIndustrial(filtered);
     setCurrentPage(1); // Reset to first page when filtering

@@ -4,9 +4,10 @@ import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import BookingModal from '../home/BookingModal';
 import ChatWithSeller from '../chat/ChatWithSeller';
+import cartService from '../../services/cartService';
 
 const Cart = () => {
-  const { cartItems, cartCount, totalAmount, loading, updateCartItem, removeFromCart, clearCart, refreshCart } = useCart();
+  const { cartItems, cartCount, loading, updateCartItem, removeFromCart, clearCart, refreshCart } = useCart();
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
   const [bookingService, setBookingService] = useState(null);
@@ -33,7 +34,17 @@ const Cart = () => {
   };
 
   const getTotalAmount = () => {
-    return totalAmount || 0;
+    if (!cartItems || cartItems.length === 0) {
+      return 0;
+    }
+
+    return cartItems.reduce((sum, item) => {
+      const itemTotal = Number(item.price || 0) * Number(item.quantity || 0);
+      if (Number.isNaN(itemTotal)) {
+        return sum;
+      }
+      return sum + itemTotal;
+    }, 0);
   };
 
   // Group cart items by seller
@@ -133,6 +144,54 @@ const Cart = () => {
       }
     }
     setBookingService(null);
+  };
+
+  const handleDeliveryRequestClick = async (sellerGroup) => {
+    if (!sellerGroup.sellerId) {
+      alert('Missing seller information for this delivery request.');
+      return;
+    }
+
+    const physicalItems = sellerGroup.items.filter(item => item.productType !== 'service');
+
+    if (physicalItems.length === 0) {
+      alert('No physical products available for delivery in this seller group.');
+      return;
+    }
+
+    const physicalSubtotal = physicalItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+
+    const orderData = {
+      sessionId: 'SESSION_' + Date.now() + '_' + sellerGroup.sellerId,
+      sellerId: sellerGroup.sellerId,
+      businessName: sellerGroup.businessName,
+      sellerName: sellerGroup.sellerName,
+      items: physicalItems,
+      subtotal: physicalSubtotal,
+      createdAt: new Date().toISOString(),
+      status: 'REQUESTING_QUOTES'
+    };
+
+    localStorage.setItem('aqualink_order_data', JSON.stringify(orderData));
+
+    try {
+      await cartService.removeSellerItems(sellerGroup.sellerId);
+    } catch (error) {
+      console.error('Failed to remove seller items from cart:', error);
+      alert(error.message || 'Failed to remove items for this seller. Please try again.');
+      return;
+    }
+
+    if (refreshCart) {
+      await refreshCart();
+    }
+
+    navigate('/delivery-request', {
+      state: {
+        sellerId: sellerGroup.sellerId,
+        businessName: sellerGroup.businessName
+      }
+    });
   };
 
   return (
@@ -336,22 +395,7 @@ const Cart = () => {
                                 🚚 Delivery with Courier Service
                               </button>
                               <button
-                                onClick={() => {
-                                  const physicalItems = sellerGroup.items.filter(item => item.productType !== 'service');
-                                  const physicalSubtotal = physicalItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                                  
-                                  const orderData = {
-                                    sessionId: 'SESSION_' + Date.now() + '_' + sellerGroup.sellerId,
-                                    sellerId: sellerGroup.sellerId,
-                                    businessName: sellerGroup.businessName,
-                                    items: physicalItems,
-                                    subtotal: physicalSubtotal,
-                                    createdAt: new Date().toISOString(),
-                                    status: 'REQUESTING_QUOTES'
-                                  };
-                                  localStorage.setItem('aqualink_order_data', JSON.stringify(orderData));
-                                  navigate('/delivery-request');
-                                }}
+                                onClick={() => handleDeliveryRequestClick(sellerGroup)}
                                 className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-3 px-6 rounded-lg"
                               >
                                 🌊 Delivery with Aqualink

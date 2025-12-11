@@ -1,5 +1,13 @@
 import React, { useState, useEffect } from 'react';
 
+const formatLkr = (amount) => {
+  const value = Number(amount) || 0;
+  return `Rs. ${value.toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+};
+
 const ServiceAdsForm = () => {
   const [services, setServices] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -153,7 +161,7 @@ const ServiceProviderCard = ({ service, onUpdate }) => {
 
       <div className="space-y-2 text-sm text-gray-600">
         <div>Category: {service.category || 'N/A'}</div>
-        <div>Price: ${service.price || '0.00'}</div>
+        <div>Price: {formatLkr(service.price)}</div>
         <div>Rating: {service.reviewRate?.toFixed(1) || '0.0'} ({service.reviewCount || 0} reviews)</div>
       </div>
 

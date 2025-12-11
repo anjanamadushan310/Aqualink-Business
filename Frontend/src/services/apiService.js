@@ -26,10 +26,25 @@ class ApiService {
 
   // Generic API request method
   async request(endpoint, options = {}) {
+    const {
+      skipAuthHandling = false,
+      headers: customHeaders,
+      ...restOptions
+    } = options;
+
     const url = `${this.baseURL}${endpoint}`;
+    const headers = {
+      ...this.getHeaders(),
+      ...(customHeaders || {}),
+    };
+
+    if (restOptions.body instanceof FormData) {
+      delete headers['Content-Type'];
+    }
+
     const config = {
-      headers: this.getHeaders(),
-      ...options,
+      headers,
+      ...restOptions,
     };
 
     try {
@@ -53,7 +68,12 @@ class ApiService {
         
         // Don't clear auth data immediately for 401s with specific error messages
         // Let AuthContext handle it based on the error message
-        if (!errorMessage.includes('pending') && !errorMessage.includes('rejected') && !errorMessage.includes('deactivated')) {
+        if (
+          !skipAuthHandling &&
+          !errorMessage.includes('pending') &&
+          !errorMessage.includes('rejected') &&
+          !errorMessage.includes('deactivated')
+        ) {
           // Clear auth data and redirect to login only for actual token issues
           localStorage.removeItem('token');
           localStorage.removeItem('user');
@@ -109,11 +129,24 @@ class ApiService {
   }
 
   // POST request
-  async post(endpoint, data) {
-    return this.request(endpoint, {
+  async post(endpoint, data, options = {}) {
+    const { body, ...restOptions } = options;
+    let requestBody = body;
+
+    if (requestBody === undefined && data !== undefined) {
+      requestBody = data instanceof FormData ? data : JSON.stringify(data);
+    }
+
+    const requestOptions = {
       method: 'POST',
-      body: JSON.stringify(data),
-    });
+      ...restOptions,
+    };
+
+    if (requestBody !== undefined) {
+      requestOptions.body = requestBody;
+    }
+
+    return this.request(endpoint, requestOptions);
   }
 
   // PUT request

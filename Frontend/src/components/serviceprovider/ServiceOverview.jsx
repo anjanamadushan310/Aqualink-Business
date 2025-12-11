@@ -68,11 +68,11 @@ const ServiceOverview = () => {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-LK', {
-      style: 'currency',
-      currency: 'LKR',
-      minimumFractionDigits: 2
-    }).format(amount || 0);
+    const value = Number(amount) || 0;
+    return `Rs. ${value.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
   };
 
   const formatDate = (dateString) => {
@@ -262,14 +262,6 @@ const ServiceOverview = () => {
           </div>
         </a>
 
-        <a
-          href="/dashboard/messages"
-          className="bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg p-6 hover:from-green-600 hover:to-green-700 transition-all shadow-md hover:shadow-lg"
-        >
-          <ArrowTrendingUpIcon className="w-8 h-8 mb-3" />
-          <h3 className="font-bold text-lg mb-2">View Analytics</h3>
-          <p className="text-sm text-green-100">Check your service history & earnings</p>
-        </a>
       </div>
     </div>
   );

@@ -97,11 +97,11 @@ const ServiceRequests = () => {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-LK', {
-      style: 'currency',
-      currency: 'LKR',
-      minimumFractionDigits: 2
-    }).format(amount || 0);
+    const value = Number(amount) || 0;
+    return `Rs. ${value.toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    })}`;
   };
 
   const formatDate = (dateString) => {

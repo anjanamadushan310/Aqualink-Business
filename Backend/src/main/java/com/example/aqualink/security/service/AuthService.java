@@ -1,8 +1,10 @@
 package com.example.aqualink.security.service;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
@@ -267,10 +269,7 @@ public class AuthService {
     }
 
     @Transactional
-    public String addRoleToUser(Long userId, String roleString, 
-                                MultipartFile nicFrontDocument,
-                                MultipartFile nicBackDocument, 
-                                MultipartFile selfieDocument) {
+    public String addRoleToUser(Long userId, String roleString) {
         try {
             // Find user
             User user = userRepository.findById(userId)
@@ -292,45 +291,77 @@ public class AuthService {
                 return "You already have this role";
             }
 
-            // Upload new documents (role-specific verification)
+            // Get existing verification documents from user's initial registration
+            List<UserRole> existingRoles = userRoleRepository.findByUser(user);
             String nicFrontPath = null;
             String nicBackPath = null;
             String selfiePath = null;
 
-            if (nicFrontDocument != null && !nicFrontDocument.isEmpty()) {
-                nicFrontPath = fileUploadService.uploadFile(nicFrontDocument);
+            // Use documents from any approved role
+            for (UserRole existingRole : existingRoles) {
+                if (existingRole.getVerificationStatus() == VerificationStatus.APPROVED) {
+                    nicFrontPath = existingRole.getNicFrontDocumentPath();
+                    nicBackPath = existingRole.getNicBackDocumentPath();
+                    selfiePath = existingRole.getSelfieDocumentPath();
+                    break;
+                }
             }
 
-            if (nicBackDocument != null && !nicBackDocument.isEmpty()) {
-                nicBackPath = fileUploadService.uploadFile(nicBackDocument);
-            }
-
-            if (selfieDocument != null && !selfieDocument.isEmpty()) {
-                selfiePath = fileUploadService.uploadFile(selfieDocument);
-            }
-
-            // Validate all documents are uploaded
-            if (nicFrontPath == null || nicBackPath == null || selfiePath == null) {
-                return "All documents (NIC Front, NIC Back, and Selfie) are required";
-            }
-
-            // Create new UserRole with PENDING status for admin approval
+            // Create new UserRole with APPROVED status (no approval needed for additional roles)
             UserRole userRole = new UserRole();
             userRole.setUser(user);
             userRole.setRoleName(newRole);
-            userRole.setVerificationStatus(VerificationStatus.PENDING);
+            userRole.setVerificationStatus(VerificationStatus.APPROVED);
             userRole.setNicFrontDocumentPath(nicFrontPath);
             userRole.setNicBackDocumentPath(nicBackPath);
             userRole.setSelfieDocumentPath(selfiePath);
             
             userRoleRepository.save(userRole);
 
-            return "Role request submitted successfully";
+            return "Role added successfully";
 
-        } catch (IOException e) {
-            return "Error uploading file: " + e.getMessage();
         } catch (Exception e) {
             return "Failed to add role: " + e.getMessage();
+        }
+    }
+
+    /**
+     * Generate a fresh JWT token for a user with their current roles
+     * Used after adding new roles to update the token
+     */
+    public Map<String, Object> generateTokenForUser(Long userId) {
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // Find user
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new RuntimeException("User not found"));
+
+            // Get all approved roles
+            List<UserRole> userRoles = userRoleRepository.findByUserId(userId);
+            Set<Role> roles = new HashSet<>();
+            
+            for (UserRole userRole : userRoles) {
+                if (userRole.getVerificationStatus() == VerificationStatus.APPROVED) {
+                    roles.add(userRole.getRoleName());
+                }
+            }
+
+            // Generate new token with updated roles
+            String token = jwtUtil.generateToken(user.getEmail(), roles, userId);
+            
+            // Convert roles to list of strings for JSON response
+            List<String> roleNames = roles.stream()
+                    .map(Role::name)
+                    .collect(java.util.stream.Collectors.toList());
+            
+            response.put("token", token);
+            response.put("roles", roleNames);
+            
+            return response;
+            
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to generate token: " + e.getMessage());
         }
     }
 }

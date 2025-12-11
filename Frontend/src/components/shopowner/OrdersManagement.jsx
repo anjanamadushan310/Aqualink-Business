@@ -141,15 +141,15 @@ const OrdersManagement = () => {
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Header */}
-        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-6 text-white">
-          <div className="flex justify-between items-center">
+        <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg p-4 sm:p-6 text-white">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
-              <h1 className="text-3xl font-bold mb-2">📦 Order Management</h1>
-              <p className="text-blue-100">Track and manage all your orders in one place</p>
+              <h1 className="text-2xl sm:text-3xl font-bold mb-1 sm:mb-2">📦 Order Management</h1>
+              <p className="text-blue-100 text-sm sm:text-base">Track and manage all your orders in one place</p>
             </div>
             <button
               onClick={fetchOrders}
-              className="px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 font-medium transition duration-200 flex items-center"
+              className="w-full sm:w-auto px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 font-medium transition duration-200 flex items-center justify-center"
             >
               <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -162,7 +162,7 @@ const OrdersManagement = () => {
         {/* Tabs for Order Status */}
         <div className="bg-white rounded-lg shadow">
           <div className="border-b border-gray-200">
-            <nav className="flex flex-wrap -mb-px">
+            <nav className="flex flex-col sm:flex-row sm:flex-wrap -mb-px">
               <button
                 onClick={() => setActiveTab('SHIPPED')}
                 className={`flex-1 py-4 px-4 text-center font-medium text-sm transition-colors ${
@@ -281,13 +281,15 @@ const OrdersManagement = () => {
           )}
         </div>
 
-        {/* Delivered Items Component or Orders Table */}
+        {/* Delivered Items Component or Orders Table/Cards */}
         {activeTab === 'DELIVERED' ? (
           <DeliveredItems />
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -356,21 +358,69 @@ const OrdersManagement = () => {
               </table>
             </div>
           </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-4">
+            {filteredOrders.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-8 text-center">
+                <div className="text-gray-400">
+                  <svg className="mx-auto h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  </svg>
+                  <p className="text-base font-medium text-gray-900">No orders found</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {searchTerm 
+                      ? 'Try adjusting your search term' 
+                      : `No ${activeTab.toLowerCase().replace('_', ' ')} orders at the moment`}
+                  </p>
+                </div>
+              </div>
+            ) : (
+              filteredOrders.map((order) => (
+                <div key={order.id} className="bg-white rounded-lg shadow-md p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <div className="text-sm font-medium text-gray-500">Order ID</div>
+                      <div className="text-lg font-bold text-blue-600">#{order.id}</div>
+                    </div>
+                    {getStatusBadge(order.orderStatus)}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-200">
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Date</div>
+                      <div className="text-sm font-medium text-gray-900">{formatDate(order.orderDateTime)}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-xs text-gray-500 mb-1">Amount</div>
+                      <div className="text-sm font-bold text-gray-900">{formatPrice(order.totalAmount)}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setSelectedOrder(order)}
+                    className="w-full mt-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium transition duration-200 text-sm"
+                  >
+                    View Details
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </>
         )}
 
         {/* Order Details Modal */}
         {selectedOrder && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div className="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-6 rounded-t-lg">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-2 sm:p-4 z-50">
+            <div className="bg-white rounded-lg max-w-3xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+              <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-4 sm:p-6 rounded-t-lg">
                 <div className="flex justify-between items-start">
-                  <div>
-                    <h2 className="text-2xl font-bold">Order Details #{selectedOrder.id}</h2>
-                    <p className="text-blue-100 mt-1">Order placed on {formatDate(selectedOrder.orderDateTime)}</p>
+                  <div className="flex-1 pr-4">
+                    <h2 className="text-lg sm:text-2xl font-bold">Order #{selectedOrder.id}</h2>
+                    <p className="text-blue-100 mt-1 text-xs sm:text-sm">Order placed on {formatDate(selectedOrder.orderDateTime)}</p>
                   </div>
                   <button
                     onClick={() => setSelectedOrder(null)}
-                    className="text-white hover:text-gray-200 transition"
+                    className="text-white hover:text-gray-200 transition flex-shrink-0 p-1"
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -379,7 +429,7 @@ const OrdersManagement = () => {
                 </div>
               </div>
 
-              <div className="p-6 space-y-6">
+              <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
                 {/* Order Items */}
                 <div className="bg-blue-50 rounded-lg p-4 border border-blue-200">
                   <h3 className="font-semibold text-gray-900 mb-3 flex items-center">

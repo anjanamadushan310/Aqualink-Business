@@ -37,6 +37,11 @@ class CartService {
     return apiService.delete(`${API_ENDPOINTS.CART.REMOVE_FROM_CART}/${cartItemId}`);
   }
 
+  // Remove all items for a specific seller from the cart
+  async removeSellerItems(sellerId) {
+    return apiService.delete(`${API_ENDPOINTS.CART.REMOVE_SELLER_ITEMS}/${sellerId}`);
+  }
+
   // Clear entire cart
   async clearCart() {
     return apiService.delete(API_ENDPOINTS.CART.CLEAR_CART);

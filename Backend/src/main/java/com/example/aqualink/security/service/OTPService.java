@@ -44,7 +44,7 @@ public class OTPService {
             
             helper.setTo(toEmail);
             helper.setSubject("Your AquaLink Registration OTP Code");
-            helper.setFrom("aqualink.lk@gmail.com", "AquaLink");
+            helper.setFrom("aqualink.demo@gmail.com", "AquaLink");
             
             // Professional HTML email template
             String htmlContent = buildOTPEmailTemplate(otp, toEmail);
@@ -122,11 +122,10 @@ public class OTPService {
         html.append("<td style=\"text-align: center;\">");
         html.append("<p style=\"margin: 0 0 15px 0; color: #475569; font-size: 14px; font-weight: 600;\">Need Help?</p>");
         html.append("<p style=\"margin: 0 0 20px 0; color: #64748b; font-size: 13px; line-height: 1.5;\">");
-        html.append("Contact us at <a href=\"mailto:support@aqualink.lk\" style=\"color: #3b82f6; text-decoration: none; font-weight: 600;\">support@aqualink.lk</a>");
+        html.append("Contact us at <a href=\"mailto:aqualink.demo@gmail.com\" style=\"color: #3b82f6; text-decoration: none; font-weight: 600;\">aqualink.demo@gmail.com</a>");
         html.append("</p>");
         html.append("<div style=\"border-top: 1px solid #e2e8f0; padding-top: 20px; margin-top: 20px;\">");
         html.append("<p style=\"margin: 0 0 8px 0; color: #94a3b8; font-size: 12px;\">© 2025 AquaLink. All rights reserved.</p>");
-        html.append("<p style=\"margin: 0; color: #cbd5e1; font-size: 11px;\">Sri Lanka's Premier Fish Export Platform</p>");
         html.append("</div>");
         html.append("</td>");
         html.append("</tr>");

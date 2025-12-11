@@ -26,12 +26,14 @@ const CommentSection = ({ blogPostId, isExporter = false, onCommentUpdate }) => 
         setLoading(true);
         setError(null);
         const data = await BlogService.getCommentsForBlog(blogPostId, page, 10);
+        
+        // Update parent component with comment count on initial load
+        if (page === 0 && onCommentUpdate) {
+          onCommentUpdate(data.length);
+        }
+
         setComments(prev => {
           const newComments = page === 0 ? data : [...prev, ...data];
-          // Update parent component with comment count on initial load
-          if (page === 0 && onCommentUpdate) {
-            onCommentUpdate(newComments.length);
-          }
           return newComments;
         });
         setHasMore(data.length === 10); // Assuming backend returns max 10 items per page
